@@ -8,7 +8,14 @@
 .ipynb_checkpoints
 */.ipynb_checkpoints/*
 
-*/data/
+data/
+.empty
+
+wandb
+outputs
+models
+asset
+
 
 # IPython
 profile_default/
