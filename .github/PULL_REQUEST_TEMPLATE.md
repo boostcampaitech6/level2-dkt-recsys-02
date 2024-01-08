@@ -1,11 +1,3 @@
----
-name: Pull Request
-about: PR 템플릿
-title: "[태그] "
-labels: ''
-assignees: ''
-
----
 ## Overview
 -
 
