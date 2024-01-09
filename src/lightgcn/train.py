@@ -43,6 +43,7 @@ def main(args: argparse.Namespace):
         learning_rate=args.lr,
         model_dir=args.model_dir,
     )
+    wandb.finish()
 
 
 if __name__ == "__main__":
