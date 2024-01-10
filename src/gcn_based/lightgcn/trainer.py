@@ -35,8 +35,9 @@ def run(
     n_epochs: int = 100,
     learning_rate: float = 0.01,
     model_dir: str = None,
+    patience: int = 10
 ):
-    model.train()
+    
 
     optimizer = torch.optim.Adam(params=model.parameters(), lr=learning_rate)
 
@@ -51,11 +52,12 @@ def run(
 
     logger.info(f"Training Started : n_epochs={n_epochs}")
     best_auc, best_epoch = 0, -1
+    early_stopping_counter = 0
     for e in range(n_epochs):
         logger.info("Epoch: %s", e)
         # TRAIN
         train_auc, train_acc, train_loss = train(train_data=train_data, model=model, optimizer=optimizer)
-    
+        
         # VALID
         auc, acc = validate(valid_data=valid_data, model=model)
         wandb.log(dict(train_loss_epoch=train_loss,
@@ -69,12 +71,18 @@ def run(
             best_auc, best_epoch = auc, e
             torch.save(obj= {"model": model.state_dict(), "epoch": e + 1},
                        f=os.path.join(model_dir, f"best_model.pt"))
+            early_stopping_counter = 0
+        else:
+            early_stopping_counter += 1
+            if early_stopping_counter >= patience:
+                break
     torch.save(obj={"model": model.state_dict(), "epoch": e + 1},
                f=os.path.join(model_dir, f"last_model.pt"))
     logger.info(f"Best Weight Confirmed : {best_epoch+1}'th epoch")
 
 
 def train(model: nn.Module, train_data: dict, optimizer: torch.optim.Optimizer):
+    model.train()
     pred = model(train_data["edge"])
     loss = model.link_pred_loss(pred=pred, edge_label=train_data["label"])
     
@@ -95,6 +103,7 @@ def train(model: nn.Module, train_data: dict, optimizer: torch.optim.Optimizer):
 
 
 def validate(valid_data: dict, model: nn.Module):
+    model.eval()
     with torch.no_grad():
         prob = model.predict_link(edge_index=valid_data["edge"], prob=True)
         prob = prob.detach().cpu().numpy()

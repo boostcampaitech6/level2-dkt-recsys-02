@@ -20,7 +20,7 @@ def parse_args():
     parser.add_argument("--model_dir", default="./models/", type=str, help="")
     parser.add_argument("--model_name", default="best_model.pt", type=str, help="")
     parser.add_argument("--model",default="lightgcn",type=str,help="")
-
+    parser.add_argument("--patience",default="10",type=int,help="")
     args = parser.parse_args()
 
     return args
