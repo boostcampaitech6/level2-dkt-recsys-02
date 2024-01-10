@@ -170,6 +170,11 @@ def inference(args, test_data: np.ndarray, model: nn.Module) -> None:
         for id, p in enumerate(total_preds):
             w.write("{},{}\n".format(id, p))
     logger.info("Successfully saved submission as %s", write_path)
+    
+    submission_artifact = wandb.Artifact('submission', type='output')
+    submission_artifact.add_file(local_path=write_path)
+    wandb.log_artifact(submission_artifact)
+    
 
 
 def get_model(args) -> nn.Module:
