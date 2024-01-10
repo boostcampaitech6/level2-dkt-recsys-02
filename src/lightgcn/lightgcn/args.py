@@ -19,7 +19,7 @@ def parse_args():
     parser.add_argument("--lr", default=0.001, type=float, help="")
     parser.add_argument("--model_dir", default="./models/", type=str, help="")
     parser.add_argument("--model_name", default="best_model.pt", type=str, help="")
-    
+    parser.add_argument("--model",default="lightgcn",type=str,help="")
 
     args = parser.parse_args()
 

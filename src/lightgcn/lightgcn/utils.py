@@ -1,6 +1,6 @@
 import os
 import random
-
+import time
 import numpy as np
 import torch
 
@@ -57,3 +57,12 @@ logging_conf = {  # only used when 'user_wandb==False'
     },
     "root": {"level": "INFO", "handlers": ["console", "file_handler"]},
 }
+
+
+def get_expname(args):
+    now = time.localtime()
+    now_date = time.strftime('%Y%m%d', now)
+    now_hour = time.strftime('%X', now)
+    save_time = now_date + '_' + now_hour.replace(':', '')
+    expname = save_time + '_' + args.model
+    return expname

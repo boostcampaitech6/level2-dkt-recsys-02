@@ -7,7 +7,7 @@ import wandb
 from lightgcn.args import parse_args
 from lightgcn.datasets import prepare_dataset
 from lightgcn import trainer
-from lightgcn.utils import get_logger, set_seeds, logging_conf
+from lightgcn.utils import get_logger, set_seeds, logging_conf, get_expname
 
 
 logger = get_logger(logging_conf)
@@ -22,8 +22,10 @@ def main(args: argparse.Namespace):
     device = torch.device("cuda" if use_cuda else "cpu")
 
     logger.info("Preparing data ...")
+    logger.info(device)
     train_data, test_data, n_node = prepare_dataset(device=device, data_dir=args.data_dir)
-
+    wandb.run.name = get_expname(args)
+    wandb.run.save()
     logger.info("Building Model ...")
     model = trainer.build(
         n_node=n_node,
@@ -41,6 +43,7 @@ def main(args: argparse.Namespace):
         learning_rate=args.lr,
         model_dir=args.model_dir,
     )
+    wandb.finish()
 
 
 if __name__ == "__main__":
