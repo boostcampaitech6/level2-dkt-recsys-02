@@ -229,4 +229,5 @@ pyrightconfig.json
 
 
 */outputs/
+*.pt
 # End of https://www.toptal.com/developers/gitignore/api/python,jupyternotebooks,linux,visualstudiocode
