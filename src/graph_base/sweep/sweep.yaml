@@ -8,7 +8,7 @@ parameters:
   hidden_dim : 
     values : [150,250,300,350,400,500]
   lr: 
-    values : [0.01, 0.005, 0.0001, 0.0005, 0.00001]
+    values : [0.01, 0.005, 0.0001, 0.0005]
   n_layers : 
     values : [3,4,5,6]
   n_epochs :
@@ -16,3 +16,4 @@ parameters:
   patience :
     values : [10]
 
+##wandb sweep --entity <조직명> --project <프로젝트명> <sweep.yaml경로>
