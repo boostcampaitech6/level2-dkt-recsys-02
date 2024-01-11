@@ -42,6 +42,7 @@ def main(args: argparse.Namespace):
         n_epochs=args.n_epochs,
         learning_rate=args.lr,
         model_dir=args.model_dir,
+        patience = args.patience
     )
     wandb.finish()
 
