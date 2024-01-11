@@ -8,7 +8,7 @@ from torch import nn
 from torch_geometric.nn.models import LightGCN
 import wandb
 
-from .utils import get_logger, logging_conf
+from lightgcn.utils import get_logger, logging_conf
 
 
 logger = get_logger(logger_conf=logging_conf)
