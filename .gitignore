@@ -15,7 +15,7 @@ wandb
 outputs
 models
 asset
-sweep
+#sweep
 
 # IPython
 profile_default/
