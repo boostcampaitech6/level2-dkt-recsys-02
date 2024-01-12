@@ -8,7 +8,7 @@ from torch import nn
 from torch_geometric.nn.models import LightGCN
 import wandb
 
-from .utils import get_logger, logging_conf
+from lightgcn.utils import get_logger, logging_conf
 
 
 logger = get_logger(logger_conf=logging_conf)
@@ -108,7 +108,7 @@ def validate(valid_data: dict, model: nn.Module):
         prob = model.predict_link(edge_index=valid_data["edge"], prob=True)
         prob = prob.detach().cpu().numpy()
         
-        label = valid_data["label"]
+        label = valid_data["label"].cpu()
         acc = accuracy_score(y_true=label, y_pred=prob > 0.5)
         auc = roc_auc_score(y_true=label, y_score=prob)
     logger.info("VALID AUC : %.4f ACC : %.4f", auc, acc)

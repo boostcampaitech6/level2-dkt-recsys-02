@@ -23,7 +23,7 @@ def main(args: argparse.Namespace):
 
     logger.info("Preparing data ...")
     logger.info(device)
-    train_data, test_data, n_node = prepare_dataset(device=device, data_dir=args.data_dir)
+    train_data, valid_data, test_data, n_node = prepare_dataset(device=device, data_dir=args.data_dir)
     wandb.run.name = get_expname(args)
     wandb.run.save()
     logger.info("Building Model ...")
@@ -39,6 +39,7 @@ def main(args: argparse.Namespace):
     trainer.run(
         model=model,
         train_data=train_data,
+        valid_data=valid_data,
         n_epochs=args.n_epochs,
         learning_rate=args.lr,
         model_dir=args.model_dir,
