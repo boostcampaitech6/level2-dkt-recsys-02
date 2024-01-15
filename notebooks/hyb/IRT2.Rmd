@@ -1,0 +1,164 @@
+---
+title: "IRT"
+author: "한예본"
+date: "2024-01-04"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(ltm) # IRT 적용하는 패키지
+library(dplyr) # leftjoin 함수가 들어 있는 패키지
+```
+
+## 데이터 받기
+```{r}
+data <- read.csv("train_data.csv")
+data
+```
+
+```{r}
+# 문제지(TestID)로 그룹화하여 테이블 생성
+unique_testids <- unique(data$testId)
+tables <- list()  # 문제지별 테이블을 저장할 리스트
+```
+
+```{r message=FALSE}
+# 각 문제지별로 subset 생성 및 테이블 생성
+for (testId in unique_testids) {
+  subset_data <- data[data$testId == testId, ]  # 해당 문제지에 해당하는 데이터 subset
+  subset_data <- subset_data[c("userID", "assessmentItemID", "answerCode")]
+  # 중복된 행 제거(마지막 행만 남긴다!)
+  # 문제를 푼 사용자만 필터링
+  users <- unique(subset_data$userID)
+  items <- unique(subset_data$assessmentItemID)
+  
+  # 문항과 사용자를 가로축과 세로축으로 하는 테이블 생성
+  table <- matrix(nrow = length(users), ncol = length(items))
+  rownames(table) <- users
+  colnames(table) <- items
+  
+  # 각 사용자의 문제 정답 여부(answercode)를 테이블에 입력
+  for (i in 1:nrow(table)) {
+    for (j in 1:ncol(table)) {
+      userID <- users[i]
+      assessmentItemID <- items[j]
+      answerCode <- tail(subset_data[subset_data$userID == userID & subset_data$assessmentItemID == assessmentItemID, "answerCode"], n = 1)
+      table[i, j] <- answerCode
+    }
+  }
+  tables[[testId]] <- table
+  
+}
+```
+
+```{r, message=FALSE}
+final_parameters <- data.frame()
+
+for (testId in unique_testids){
+  table <- tables[testId]
+  table_matrix <- as.data.frame(table)
+  fit3PL <- tpm(table_matrix)
+  coefs <- coef(fit3PL)
+  
+  itemID <- substr(row.names(coefs), 12, 21)
+  
+  coefs <- data.frame(coefs)
+  parameters <- data.frame(
+    assessmentItemID = itemID,
+    Dffclt = coefs$Dffclt,
+    Dscrmn = coefs$Dscrmn,
+    Gussng = coefs$Gussng
+  )
+  final_parameters <- rbind(final_parameters, parameters)
+}
+```
+```{r}
+write.csv(final_parameters, "IRT_3PL.csv", row.names = FALSE)
+```
+
+```{r}
+# train과 test에 left join
+train_data <- read.csv("train_data.csv")
+test_data <- read.csv("test_data.csv")
+
+joined_train <- train_data %>%
+  left_join(final_parameters, by = "assessmentItemID")
+joined_test <- test_data %>%
+  left_join(final_parameters, by = "assessmentItemID")
+```
+
+```{r}
+any(is.na(joined_test)) # test_data에 새로운 문항 있는지 확인
+```
+
+
+```{r}
+write.csv(joined_train, "train_data_3PL.csv", row.names = FALSE)
+write.csv(joined_test, "test_data_3PL.csv", row.names = FALSE)
+```
+## 아래는 연습용입니다!
+
+```{r}
+testid <- "A060000007"
+table <- tables[testid]
+table
+```
+
+# 1PL
+```{r}
+table_matrix <- as.data.frame(table)
+print(table_matrix)
+fit1PL <- rasch(table_matrix)
+summary(fit1PL)
+```
+# 2PL
+```{r}
+fit2PL <- ltm(table_matrix ~ z1)
+fit2PL
+```
+
+# 3PL
+```{r}
+fit3PL <- tpm(table_matrix)
+itemID <- substr(row.names(coefs), 12, 21)
+coefs <- coef(fit3PL)
+coefs <- data.frame(coefs)
+
+itemID <- substr(row.names(coefs), 12, 21)
+  
+  coefs <- data.frame(coefs)
+  parameters <- data.frame(
+    assessmentItemID = itemID,
+    Dffclt = coefs$Dffclt,
+    Dscrmn = coefs$Dscrmn,
+    Gussng = coefs$Gussng
+  )
+  final_parameters <- rbind(final_parameters, parameters)
+```
+
+```{r}
+sc <- factor.scores(fit3PL, resp.patterns=table_matrix)
+scores <- sc$score.dat$z1
+userID <- row.names(table_matrix)
+
+user_level <- data.frame(
+    userID = userID,
+    level = scores,
+    assessmentItemID = testid
+  )
+```
+
+```{r}
+output <- read.csv("submission.csv")
+sample <- read.csv("sample_submission.csv")
+```
+
+
+```{r}
+print(output)
+print(sample)
+any(is.na(output))
+```
+```
+
+
