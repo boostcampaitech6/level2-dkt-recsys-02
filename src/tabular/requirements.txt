@@ -1,0 +1,6 @@
+pandas
+scikit-learn
+tqdm
+wandb
+lightgbm
+matplotlib
