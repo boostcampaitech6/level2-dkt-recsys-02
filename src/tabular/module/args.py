@@ -65,4 +65,23 @@ def parse_args():
 
     args = parser.parse_args()
 
-    return args
+    # Extract model-related parameters into a dictionary
+    model_params = {
+        "model_type": "lgbm",  # Change this to the desired model type
+        "lgbm_params": {
+            "learning_rate": 0.1,
+            "n_estimators": 10000,
+            "max_depth": -1,
+            "num_leaves": 200,
+            "colsample_bytree": 0.7,
+            "objective": "binary",
+            "metric": "binary_logloss",
+            "early_stopping_rounds": 50,
+            "verbosity": 10,
+            # Add other LGBM parameters here
+        },
+        "other_model_params": {
+            # Add parameters for other models if needed
+        }
+    }
+    return args, model_params

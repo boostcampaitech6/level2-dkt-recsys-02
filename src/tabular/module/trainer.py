@@ -27,7 +27,7 @@ LightGBMConfig={
     'verbosity':10
 }
 
-def run(args, exp_name):
+def run(args, exp_name, model_params):
     
     logger.info("Preparing Train data ...")
     preprocess = Preprocess(args)
@@ -40,8 +40,7 @@ def run(args, exp_name):
     
     logger.info("Building Model ...")
     if args.model_name == 'lgbm':
-        config = LightGBMConfig
-        model = LightGBMModel(feats=FEATS, config=config)
+        model = LightGBMModel(feats=FEATS, config=model_params['lgbm_params'])
 
 
     logger.info("Start Training ...")
@@ -79,6 +78,6 @@ def inference(args, test_data, model, exp_name):
     logger.info("Successfully saved submission as %s", write_path)
     
     # WandB Artifact Logging
-    # submission_artifact = wandb.Artifact('submission', type='output')
-    # submission_artifact.add_file(local_path=write_path)
-    # wandb.log_artifact(submission_artifact)
+    submission_artifact = wandb.Artifact('submission', type='output')
+    submission_artifact.add_file(local_path=write_path)
+    wandb.log_artifact(submission_artifact)

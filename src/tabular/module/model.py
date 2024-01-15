@@ -1,4 +1,5 @@
 import lightgbm as lgb
+from wandb.lightgbm import wandb_callback, log_summary
 
 class LightGBMModel:
     def __init__(self, feats, config):
@@ -14,8 +15,10 @@ class LightGBMModel:
             self.config,
             train_set=lgb_train,
             valid_sets=lgb_valid,
-            num_boost_round=500
+            num_boost_round=500,
+            callbacks=[wandb_callback()]
         )
+        log_summary(self.model, save_model_checkpoint=True)
 
     def predict(self, x_valid):
         if self.model is not None:
