@@ -1,5 +1,6 @@
 import math
 import os
+import wandb
 
 import numpy as np
 import wandb
@@ -11,23 +12,10 @@ from .utils import get_logger, logging_conf, get_expname
 
 logger = get_logger(logger_conf=logging_conf)
 
-# 사용할 Feature 설정
-FEATS = ['KnowledgeTag', 'user_correct_answer', 'user_total_answer',
-         'user_acc', 'test_mean', 'test_sum', 'tag_mean','tag_sum']
-
-LightGBMConfig={
-    'learning_rate':0.1,
-    'n_estimators':10000,
-    'max_depth':10,
-    'num_leaves': 200,
-    'colsample_bytree':0.7,
-    'objective':'binary',
-    'metric':'rmse',
-    'early_stopping_rounds':50,
-    'verbosity':10
-}
-
-def run(args, exp_name, model_params):
+def run(args, w_config):
+    exp_name = get_expname(args)
+    wandb.run.name = exp_name
+    wandb.run.save()
     
     logger.info("Preparing Train data ...")
     preprocess = Preprocess(args)
@@ -40,11 +28,11 @@ def run(args, exp_name, model_params):
     
     logger.info("Building Model ...")
     if args.model_name == 'lgbm':
-        model = LightGBMModel(feats=FEATS, config=model_params['lgbm_params'])
+        model = LightGBMModel(config=w_config)
 
 
-    logger.info("Start Training ...")
     # TRAIN
+    logger.info("Start Training ...")
     model.fit(x_train, y_train, x_valid, y_valid)
     
     # VALID
@@ -52,11 +40,9 @@ def run(args, exp_name, model_params):
     acc, auc = get_metric(y_valid, preds)
     logger.info("TRAIN AUC : %.4f ACC : %.4f", auc, acc)
     
-    # WandB Artifact Logging
-    # model_artifact = wandb.Artifact(f'{exp_name}', type='model')
-    # model_artifact.add_file(local_path=f'{args.model_dir}{exp_name}.pt')
-    # wandb.log_artifact(model_artifact)
-    # joblib.dump(model, f'{args.model_dir}{exp_name}_{args.model_name}.pkl')
+    # WandB Logging
+    wandb.log(dict(valid_acc=acc,
+                   valid_auc=auc))
     
     # INFERENCE
     logger.info("Preparing Test data ...")
@@ -67,7 +53,7 @@ def run(args, exp_name, model_params):
 
 def inference(args, test_data, model, exp_name):
     
-    total_preds = model.predict(test_data[FEATS])
+    total_preds = model.predict(test_data)
     
     write_path = os.path.join(args.output_dir, f"{exp_name}_submission.csv")
     os.makedirs(name=args.output_dir, exist_ok=True)

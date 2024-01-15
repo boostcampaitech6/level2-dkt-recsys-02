@@ -31,57 +31,6 @@ def parse_args():
         "--test_file_name", default="test_data.csv", type=str, help="test file name"
     )
 
-    # parser.add_argument(
-    #     "--max_seq_len", default=20, type=int, help="max sequence length"
-    # )
-    # parser.add_argument("--num_workers", default=1, type=int, help="number of workers")
-
-    # # 모델
-    # parser.add_argument(
-    #     "--hidden_dim", default=64, type=int, help="hidden dimension size"
-    # )
-    # parser.add_argument("--n_layers", default=2, type=int, help="number of layers")
-    # parser.add_argument("--n_heads", default=2, type=int, help="number of heads")
-    # parser.add_argument("--drop_out", default=0.2, type=float, help="drop out rate")
-
-    # # 훈련
-    # parser.add_argument("--n_epochs", default=20, type=int, help="number of epochs")
-    # parser.add_argument("--batch_size", default=64, type=int, help="batch size")
-    # parser.add_argument("--lr", default=0.0001, type=float, help="learning rate")
-    # parser.add_argument("--clip_grad", default=10, type=int, help="clip grad")
-    # parser.add_argument("--patience", default=5, type=int, help="for early stopping")
-
-    # parser.add_argument(
-    #     "--log_steps", default=50, type=int, help="print log per n steps"
-    # )
-
-    # ### 중요 ###
-    # parser.add_argument("--model", default="lstm", type=str, help="model type")
-    # parser.add_argument("--optimizer", default="adam", type=str, help="optimizer type")
-    # parser.add_argument(
-    #     "--scheduler", default="plateau", type=str, help="scheduler type"
-    # )
-    # parser.add_argument("--weight_decay", default=0.01, type=float, help="weight decay")
-
     args = parser.parse_args()
 
-    # Extract model-related parameters into a dictionary
-    model_params = {
-        "model_type": "lgbm",  # Change this to the desired model type
-        "lgbm_params": {
-            "learning_rate": 0.1,
-            "n_estimators": 10000,
-            "max_depth": -1,
-            "num_leaves": 200,
-            "colsample_bytree": 0.7,
-            "objective": "binary",
-            "metric": "binary_logloss",
-            "early_stopping_rounds": 50,
-            "verbosity": 10,
-            # Add other LGBM parameters here
-        },
-        "other_model_params": {
-            # Add parameters for other models if needed
-        }
-    }
-    return args, model_params
+    return args

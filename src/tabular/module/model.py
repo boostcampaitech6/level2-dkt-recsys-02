@@ -1,18 +1,30 @@
 import lightgbm as lgb
 from wandb.lightgbm import wandb_callback, log_summary
+from model_configs.default_config import lightGBMParams, FEATS
+
 
 class LightGBMModel:
-    def __init__(self, feats, config):
-        self.feats = feats
+    def __init__(self, config):
+        self.feats = FEATS
         self.config = config
         self.model = None
+        self.params = lightGBMParams
 
+    def setting(self):
+        self.params['boosting'] = self.config['boosting']
+        self.params['max_depth'] = self.config['max_depth']
+        self.params['learning_rate'] = self.config['learning_rate']
+        self.params['num_leaves'] = self.config['num_leaves']
+        self.params['colsample_bytree'] = self.config['colsample_bytree']
+        self.params['num_iterations'] = self.config['num_iterations']
+        return self.params
+        
     def fit(self, x_train, y_train, x_valid, y_valid):
+        params = self.setting()
         lgb_train = lgb.Dataset(x_train[self.feats], y_train)
         lgb_valid = lgb.Dataset(x_valid[self.feats], y_valid, reference=lgb_train)
-
         self.model = lgb.train(
-            self.config,
+            params,
             train_set=lgb_train,
             valid_sets=lgb_valid,
             num_boost_round=500,
