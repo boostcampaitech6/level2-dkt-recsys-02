@@ -12,8 +12,22 @@ library(dplyr) # leftjoin 함수가 들어 있는 패키지
 
 ## 데이터 받기
 ```{r}
-data <- read.csv("train_data.csv")
-data
+train <- read.csv("train_data.csv")
+test <- read.csv("test_data.csv")
+```
+
+```{r}
+replace_missing_values <- function(df, col) {
+  replacement_values <- sample(c(1, 0), size = sum(df[[col]] == -1), replace = TRUE, prob = c(0.7, 0.3))
+  df[[col]][df[[col]] == -1] <- replacement_values
+  return(df)
+}
+
+test <- replace_missing_values(test, "answerCode")
+```
+
+```{r}
+data <- rbind(train, test)
 ```
 
 ```{r}
@@ -72,6 +86,7 @@ for (testId in unique_testids){
   final_parameters <- rbind(final_parameters, parameters)
 }
 ```
+
 ```{r}
 write.csv(final_parameters, "IRT_3PL.csv", row.names = FALSE)
 ```
@@ -91,15 +106,100 @@ joined_test <- test_data %>%
 any(is.na(joined_test)) # test_data에 새로운 문항 있는지 확인
 ```
 
-
 ```{r}
 write.csv(joined_train, "train_data_3PL.csv", row.names = FALSE)
 write.csv(joined_test, "test_data_3PL.csv", row.names = FALSE)
 ```
+
+# 유저 학습수준 dataframe 만들기
+```{r, message=FALSE}
+final_levels <- data.frame()
+
+for (testId in unique_testids){
+  print(testId)
+  table <- tables[testId]
+  table_matrix <- as.data.frame(table)
+  fit3PL <- tpm(table_matrix)
+  sc <- factor.scores(fit3PL, resp.patterns=table_matrix)
+  scores <- sc$score.dat$z1
+  userID <- row.names(table_matrix)
+
+  user_levels <- data.frame(
+    userID = userID,
+    testId = testId,
+    user_level = scores
+  )
+
+  final_levels <- rbind(final_levels, user_levels)
+}
+```
+
+```{r, message=FALSE}
+final_levels <- data.frame()
+error_test <- list()
+
+for (testId in unique_testids){
+  table <- tables[testId]
+  table_matrix <- as.data.frame(table)
+  fit3PL <- tpm(table_matrix)
+  
+  scores <- tryCatch({
+    sc <- factor.scores(fit3PL, resp.patterns=table_matrix)
+    sc$score.dat$z1
+  }, error=function(e) {
+    message("Error in factor.scores: ", e)
+    error_test <<- c(error_test, testId)
+    rep(0, length(row.names(table_matrix)))
+  })
+  
+  userID <- row.names(table_matrix)
+
+  user_levels <- data.frame(
+    userID = userID,
+    testId = testId,
+    user_level = scores
+  )
+
+  final_levels <- rbind(final_levels, user_levels)
+}
+```
+
+```{r}
+final_levels$userID <- as.integer(final_levels$userID)
+```
+
+```{r}
+write.csv(final_levels, "IRT_user_level.csv", row.names = FALSE)
+```
+
+```{r}
+# train과 test에 left join
+train_data <- read.csv("train_data_3PL.csv")
+test_data <- read.csv("test_data_3PL.csv")
+```
+
+
+```{r}
+joined_train <- train_data %>%
+  left_join(final_levels, by = c("userID", "testId"))
+joined_test <- test_data %>%
+  left_join(final_levels,  by = c("userID", "testId"))
+```
+
+```{r}
+any(is.na(joined_test)) # test_data에 새로운 문항 있는지 확인
+```
+
+```{r}
+write.csv(joined_train, "train_data_3PL+level.csv", row.names = FALSE)
+write.csv(joined_test, "test_data_3PL+level.csv", row.names = FALSE)
+```
+
 ## 아래는 연습용입니다!
 
 ```{r}
-testid <- "A060000007"
+testid <- "A060000002"
+
 table <- tables[testid]
 table
 ```
@@ -137,14 +237,16 @@ itemID <- substr(row.names(coefs), 12, 21)
 ```
 
 ```{r}
+table_matrix <- as.data.frame(table)
+fit3PL <- tpm(table_matrix)
 sc <- factor.scores(fit3PL, resp.patterns=table_matrix)
 scores <- sc$score.dat$z1
 userID <- row.names(table_matrix)
 
 user_level <- data.frame(
     userID = userID,
-    level = scores,
-    assessmentItemID = testid
+    testId = testid,
+    user_level = scores
   )
 ```
 
