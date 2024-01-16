@@ -1,0 +1,17 @@
+program : train_sgcn.py
+method : bayes
+name : Graph/SGCN
+metric:
+  name: valid_auc_epoch
+  goal : minimize
+parameters:
+  hidden_dim : 
+    values : [32,64,128,150,250,300,350,400,500]
+  lr: 
+    values : [0.01, 0.005, 0.0001, 0.0005]
+  n_layers : 
+    values : [1,2,3,4,5]
+  input_dim:
+    values : [32,64,128,150,300]
+
+##wandb sweep --entity <조직명> --project <프로젝트명> <sweep.yaml경로>

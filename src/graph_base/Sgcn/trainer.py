@@ -66,18 +66,24 @@ def run(
         # VALID
         auc = validate(valid_data,model,node_embedding)
         
+        
+        wandb.log(dict(valid_auc_epoch=auc))
+        
+        
         if auc > best_auc:
             logger.info("Best model updated AUC from %.4f to %.4f", best_auc, auc)
             best_auc, best_epoch = auc, e
             torch.save(obj= {"model": model.state_dict(), "epoch": e + 1},
                        f=os.path.join(model_dir, f"best_model.pt")) 
+            
             with torch.no_grad():
                 pred = model.discriminate(node_embedding,edge_index=test_data["edge"])
                 pred = pred.flatten().detach().cpu().numpy()
                 os.makedirs(name="./submit/", exist_ok=True)
                 write_path = os.path.join("./submit/", "submission.csv")
                 pd.DataFrame({"prediction": pred}).to_csv(path_or_buf=write_path, index_label="id")
-            
+                
+           
             early_stopping_counter = 0
         else:
             early_stopping_counter += 1
@@ -93,7 +99,7 @@ def train(model: nn.Module, train_data: dict, optimizer: torch.optim.Optimizer, 
     optimizer.zero_grad()
     pos_edge, neg_edge = edge_split_by_sign(train_data)
     next_embedding = model(embedding,pos_edge,neg_edge)
-    loss = model.loss(next_embedding,train_data)
+    loss = model.loss_bpr(next_embedding,train_data)
     # backward
     loss.backward()
     optimizer.step()

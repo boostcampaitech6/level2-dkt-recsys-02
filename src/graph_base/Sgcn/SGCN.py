@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
+from .BPRloss import BPRLoss
 from sklearn.metrics import accuracy_score, roc_auc_score
 from torch_geometric.nn import SignedConv
 from torch_geometric.utils import (
@@ -89,7 +90,6 @@ class SignedGCN(torch.nn.Module):
         pos_val = torch.full((pos_edge_index.size(1), ), 2, dtype=torch.float)
         neg_val = torch.full((neg_edge_index.size(1), ), 0, dtype=torch.float)
         val = torch.cat([pos_val, neg_val], dim=0)
-
         row, col = edge_index
         edge_index = torch.cat([edge_index, torch.stack([col, row])], dim=1)
         val = torch.cat([val, val], dim=0)
@@ -140,7 +140,7 @@ class SignedGCN(torch.nn.Module):
         value = self.lin(value)
         return torch.sigmoid(value)
 
-    def loss(
+    def loss_bce(
         self,
         z: Tensor,
         edge:Tensor
@@ -159,6 +159,25 @@ class SignedGCN(torch.nn.Module):
         
         return bceloss(logit,label)
 
+    def loss_bpr(
+        self,
+        z: Tensor,
+        edge:Tensor
+    ) -> Tensor:
+        """Computes the overall objective.
+
+        Args:
+            z (torch.Tensor): The node embeddings.
+            pos_edge_index (torch.Tensor): The positive edge indices.
+            neg_edge_index (torch.Tensor): The negative edge indices.
+        """
+        logit = self.discriminate(z,edge['edge'])
+        label = edge['label']
+        label = label.view(-1, 1).float()
+        BprLoss = BPRLoss()
+        
+        return BprLoss(logit,label)
+    
     def test(
         self,
         z: Tensor,
@@ -179,7 +198,7 @@ class SignedGCN(torch.nn.Module):
         
         label = edge['label'].cpu().numpy()
         acc = accuracy_score(y_true=label, y_pred=logit > 0.5)
-        print(logit)
+        #print(logit)
         auc = roc_auc_score(y_true=label, y_score=logit)
 
         return auc, acc
