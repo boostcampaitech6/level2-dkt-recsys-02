@@ -14,7 +14,7 @@ import json
 args = parse_args()
 
 # JSON 파일에서 sweep 설정 읽어오기
-if args.model_name == 'lgbm':
+if args.model == 'lgbm':
     with open('./sweep/lgbm_sweep.json', 'r') as file:
         sweep_config = json.load(file)
         default_params = lightGBMParams

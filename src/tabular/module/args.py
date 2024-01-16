@@ -25,6 +25,9 @@ def parse_args():
         "--model_name", default="best_model.pt", type=str, help="model file name"
     )
     parser.add_argument(
+        "--model", default="lgbm", type=str, help="model name"
+    )
+    parser.add_argument(
         "--output_dir", default="outputs/", type=str, help="output directory"
     )
     parser.add_argument(
