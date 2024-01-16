@@ -1,0 +1,13 @@
+{
+    "name": "lgbm-sweep",
+    "method": "bayes",
+    "metric": {"goal": "minimize", "name": "binary_logloss"},
+    "parameters": {
+        "max_depth": {"min": 5, "max": 100},
+        "boosting": {"values": ["gbdt", "rf", "dart"]},
+        "num_leaves": {"min": 10, "max": 150},
+        "learning_rate": {"min": 0.001, "max": 0.1},
+        "colsample_bytree": {"min": 0.1, "max": 0.9},
+        "num_iterations": {"min": 80, "max":10000}
+    }
+}
