@@ -16,7 +16,7 @@ def parse_args():
     parser.add_argument("--hidden_dim", default=32, type=int, help="")
     parser.add_argument("--n_layers", default=3, type=int, help="")
     
-    parser.add_argument("--n_epochs", default=65, type=int, help="")
+    parser.add_argument("--n_epochs", default=44, type=int, help="")
     parser.add_argument("--lr", default=0.01, type=float, help="")
     parser.add_argument("--model_dir", default="./models/", type=str, help="")
     parser.add_argument("--model_name", default="best_model.pt", type=str, help="")

@@ -35,7 +35,7 @@ class SignedGCN(torch.nn.Module):
         hidden_channels: int,
         num_layers: int,
         lamb: float = 5,
-        bias: bool = True,
+        bias: bool = True
     ):
         super().__init__()
 
@@ -43,8 +43,9 @@ class SignedGCN(torch.nn.Module):
         self.x = nn.Parameter(torch.empty(16896,in_channels), requires_grad=True) ##node개수 하드코딩
         ##lightgcn weighted sum 
         alpha = 1. / (num_layers + 1)
-        alpha = torch.tensor([alpha] * (num_layers + 1))
-        self.register_buffer('alpha', alpha)
+        self.alpha = nn.ParameterList()
+        for _ in range(num_layers + 1):
+            self.alpha.append(nn.Parameter(torch.tensor([alpha])))
         self.hidden_channels = hidden_channels
         self.num_layers = num_layers
         self.lamb = lamb
@@ -58,6 +59,7 @@ class SignedGCN(torch.nn.Module):
                            first_aggr=False))
 
         self.lin = torch.nn.Linear(2 * hidden_channels, 1)
+        self.dropout = torch.nn.Dropout(0.2)
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -126,8 +128,10 @@ class SignedGCN(torch.nn.Module):
         """
         x = self.x
         z = self.alpha[0] * self.conv1(x, pos_edge_index, neg_edge_index)
+        z = self.dropout(z)
         for i,conv in enumerate(self.convs):
             z =  z + conv(z, pos_edge_index, neg_edge_index) * self.alpha[i+1]
+            z = self.dropout(z)
         return z
 
     def discriminate(self, z: Tensor, edge_index: Tensor) -> Tensor:
