@@ -20,7 +20,7 @@ def build(n_node: int, weight: str = None, **kwargs):
     if weight:
         if not os.path.isfile(path=weight):
             logger.fatal("Model Weight File Not Exist")
-        logger.info("Load model")
+        logger.info(" model")
         state = torch.load(f=weight)["model"]
         model.load_state_dict(state)
         return model
@@ -54,7 +54,7 @@ def run(
     logger.info(f"Training Started : n_epochs={n_epochs}")
     best_auc, best_epoch = 0, -1
     early_stopping_counter = 0
-    print(num_nodes)
+    #print(num_nodes)
     input_feature = torch.rand((num_nodes,32),device="cuda")
     for e in range(n_epochs):
         logger.info("Epoch: %s", e)
@@ -77,10 +77,11 @@ def run(
                        f=os.path.join(model_dir, f"best_model.pt")) 
             
             with torch.no_grad():
+                print("t")
                 pred = model.discriminate(node_embedding,edge_index=test_data["edge"])
                 pred = pred.flatten().detach().cpu().numpy()
                 os.makedirs(name="./submit/", exist_ok=True)
-                write_path = os.path.join("./submit/", "submission.csv")
+                write_path = os.path.join("./submit/", "submission_t.csv")
                 pd.DataFrame({"prediction": pred}).to_csv(path_or_buf=write_path, index_label="id")
                 
            

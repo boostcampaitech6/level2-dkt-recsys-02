@@ -41,7 +41,10 @@ class SignedGCN(torch.nn.Module):
 
         self.in_channels = in_channels
         self.x = nn.Parameter(torch.empty(16896,in_channels), requires_grad=True) ##node개수 하드코딩
-        self.dropout = nn.Dropout(0.25)
+        ##lightgcn weighted sum 
+        alpha = 1. / (num_layers + 1)
+        alpha = torch.tensor([alpha] * (num_layers + 1))
+        self.register_buffer('alpha', alpha)
         self.hidden_channels = hidden_channels
         self.num_layers = num_layers
         self.lamb = lamb
@@ -122,11 +125,9 @@ class SignedGCN(torch.nn.Module):
             neg_edge_index (torch.Tensor): The negative edge indices.
         """
         x = self.x
-        z = F.relu(self.conv1(x, pos_edge_index, neg_edge_index))
-        z = self.dropout(z)
-        for conv in self.convs:
-            z = F.relu(conv(z, pos_edge_index, neg_edge_index))
-            z = self.dropout(z)
+        z = self.alpha[0] * self.conv1(x, pos_edge_index, neg_edge_index)
+        for i,conv in enumerate(self.convs):
+            z =  z + conv(z, pos_edge_index, neg_edge_index) * self.alpha[i+1]
         return z
 
     def discriminate(self, z: Tensor, edge_index: Tensor) -> Tensor:
@@ -202,7 +203,6 @@ class SignedGCN(torch.nn.Module):
         acc = accuracy_score(y_true=label, y_pred=logit > 0.5)
         #print(logit)
         auc = roc_auc_score(y_true=label, y_score=logit)
-
         return auc, acc
 
     def __repr__(self) -> str:
