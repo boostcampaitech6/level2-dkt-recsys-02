@@ -283,7 +283,7 @@ class DKTDataset_PC(torch.utils.data.Dataset):
             if(df==past_df):
                 seq_len = len(df['past_test'])
                 if seq_len < self.max_seq_len:   # sequence data 길이가 max보다 작은 경우
-                    for k, seq in data.items():
+                    for k, seq in df.items():
                         tmp = torch.zeros(self.max_seq_len)   # max 길이만큼 0 생성
                         tmp[self.max_seq_len-seq_len:] = df[k]   # sequence data 뒤쪽에 넣음
                         df[k] = tmp
@@ -302,7 +302,7 @@ class DKTDataset_PC(torch.utils.data.Dataset):
             elif(df==current_df):
                 seq_len = len(df['current_test'])
                 if seq_len < self.max_seq_len:   # sequence data 길이가 max보다 작은 경우
-                    for k, seq in data.items():
+                    for k, seq in df.items():
                         tmp = torch.zeros(self.max_seq_len)   # max 길이만큼 0 생성
                         tmp[self.max_seq_len-seq_len:] = df[k]   # sequence data 뒤쪽에 넣음
                         df[k] = tmp

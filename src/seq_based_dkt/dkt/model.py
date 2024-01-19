@@ -468,10 +468,14 @@ class SASRec(nn.Module):   # 원래 SASRec에서 hidden_units(일단 지움)이�
                 n_tags: int = 913,
                 n_conti_features: int = 13,
                 # self-attention에 필요한 인자들
-                num_heads = 2,   # 있어야 함 
-                dropout_rate=0.2,   # 있어야 함
+                n_heads = 2,   # 있어야 함 
+                drop_out=0.2,   # 있어야 함
+                max_seq_len = 5 # 어쩔수없이 받는것 - 사용하지않는인자
                 ):
         super(SASRec, self).__init__()
+        num_layers = n_layers
+        hidden_units = hidden_dim
+        dropout_rate = drop_out
         self.hidden_dim = hidden_dim
         self.n_layers = n_layers
         self.n_tests = n_tests
@@ -510,7 +514,7 @@ class SASRec(nn.Module):   # 원래 SASRec에서 hidden_units(일단 지움)이�
             dropout = dropout_rate,
             )
 
-        self.blocks = nn.ModuleList([SASRecBlock(num_heads, hidden_units, dropout_rate) for _ in range(num_layers)])
+        self.blocks = nn.ModuleList([SASRecBlock(n_heads, hidden_units, dropout_rate) for _ in range(num_layers)])
 
         # predict layer
         self.dropout = nn.Dropout(dropout_rate)
@@ -520,7 +524,7 @@ class SASRec(nn.Module):   # 원래 SASRec에서 hidden_units(일단 지움)이�
         )
 
         self.hidden_dim = hidden_dim
-        self.num_heads = num_heads
+        self.num_heads = n_heads
         self.num_layers = num_layers
 
     def forward(self, past_test, past_question, past_tag, past_correct,
