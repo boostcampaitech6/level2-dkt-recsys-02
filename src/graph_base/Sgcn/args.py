@@ -11,16 +11,21 @@ def parse_args():
     
     parser.add_argument("--output_dir", default="./outputs/", type=str, help="")
     
-    parser.add_argument("--hidden_dim", default=64, type=int, help="")
-    parser.add_argument("--n_layers", default=1, type=int, help="")
-    parser.add_argument("--alpha", default=None, type=float, help="")
     
-    parser.add_argument("--n_epochs", default=20, type=int, help="")
-    parser.add_argument("--lr", default=0.001, type=float, help="")
+    parser.add_argument("--input_dim", default=256, type=int, help="")
+    parser.add_argument("--hidden_dim", default=64, type=int, help="")
+    parser.add_argument("--n_layers", default=3, type=int, help="")
+    
+    parser.add_argument("--n_epochs", default=109, type=int, help="")
+    parser.add_argument("--lr", default=0.01, type=float, help="")
     parser.add_argument("--model_dir", default="./models/", type=str, help="")
     parser.add_argument("--model_name", default="best_model.pt", type=str, help="")
-    parser.add_argument("--model",default="lightgcn",type=str,help="")
-    parser.add_argument("--patience",default="30",type=int,help="")
+    parser.add_argument("--model",default="Sgcn",type=str,help="")
+    parser.add_argument("--patience",default="1000",type=int,help="")
+    parser.add_argument("--lamb", default=5, type=int, help="")
+    parser.add_argument("--bias", default=True, type=bool, help="")
+    
+    
     args = parser.parse_args()
 
     return args
