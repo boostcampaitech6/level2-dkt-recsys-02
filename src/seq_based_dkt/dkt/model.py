@@ -474,7 +474,7 @@ class SASRec(nn.Module):   # 원래 SASRec에서 hidden_units(일단 지움)이�
                 ):
         super(SASRec, self).__init__()
         num_layers = n_layers
-        hidden_units = hidden_dim
+        self.embedding_size = hidden_dim
         dropout_rate = drop_out
         self.hidden_dim = hidden_dim
         self.n_layers = n_layers
@@ -482,16 +482,21 @@ class SASRec(nn.Module):   # 원래 SASRec에서 hidden_units(일단 지움)이�
         self.n_questions = n_questions
         self.n_tags = n_tags
         self.n_conti_features = n_conti_features
+        self.n
+        ##Past  
+        #data - past 임베딩 생성기
+        self.past_embedding_test = nn.Embedding(n_tests + 1, embedding_size, padding_idx=0)
+        self.past_embedding_question = nn.Embedding(n_questions + 1, embedding_size, padding_idx=0)
+        self.past_embedding_tag = nn.Embedding(n_tags + 1, embedding_size, padding_idx=0)
+        self.past_embedding_testTag=nn.Embedding(10, embedding_size, padding_idx=0)   # 학년으로 추정
+        self.num_categorical = 4 #위에 선언한 개수만큼 적어주세요 나중에 인자로 받아야함
 
-        hd, intd = hidden_dim, hidden_dim // 3   # hyper-parameter
-        # interaction은 현재 correct로 구성되어있다. correct(1, 2) + padding(0)
-        self.embedding_interaction = nn.Embedding(3, intd) 
-        self.embedding_test = nn.Embedding(n_tests + 1, intd)
-        self.embedding_question = nn.Embedding(n_questions + 1, intd)
-        self.embedding_tag = nn.Embedding(n_tags + 1, intd)
-        self.embedding_testTag=nn.Embedding(10, intd)   # 학년으로 추정
-        self.past_correct_emb = nn.Embedding(3, hidden_dim, padding_idx = 0)
+        #self.past_correct_emb = nn.Embedding(3, hidden_dim, padding_idx = 0) # 0, 1, -1 #임베딩받기위해 사용할건데 일단 제거
 
+        #past categorical 변수 concatnator
+        self.pat_cat_emb = nn.Sequential(
+            nn.Linear(self.num_categorical)*embedding_size, 
+        )
         # 수치형 변환 layer
         self.lin_activation=nn.Sequential(nn.Linear(1,(intd*5)//n_conti_features),nn.Sigmoid())
 
