@@ -144,7 +144,7 @@ class Preprocess:
         df['time_to_solve'] = df.groupby(['userID', 'testId'])['Timestamp'].diff().dt.total_seconds().shift(-1)
         
         # 결측치 이전 행의 값으로 채움
-        df['time_to_solve'].fillna(method='ffill', inplace=True)
+        df['time_to_solve'].ffill()
 
         # 유저별 문항 시간 평균
         #df['time_to_solve_mean'] = df.groupby('userID')['time_to_solve'].transform('mean')
@@ -368,7 +368,7 @@ def get_loaders(args, train: np.ndarray, valid: np.ndarray) -> Tuple[torch.utils
     train_loader, valid_loader = None, None
 
     if train is not None:
-        trainset = DKTDataset(train, args)
+        trainset = DKTDataset_PC(train, args)
         train_loader = torch.utils.data.DataLoader(
             trainset,
             num_workers=args.num_workers,
@@ -377,7 +377,7 @@ def get_loaders(args, train: np.ndarray, valid: np.ndarray) -> Tuple[torch.utils
             pin_memory=pin_memory,
         )
     if valid is not None:
-        valset = DKTDataset(valid, args)
+        valset = DKTDataset_PC(valid, args)
         valid_loader = torch.utils.data.DataLoader(
             valset,
             num_workers=args.num_workers,
