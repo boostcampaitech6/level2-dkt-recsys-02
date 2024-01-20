@@ -1,6 +1,13 @@
 import torch
 import torch.nn as nn
-from transformers.models.bert.modeling_bert import BertConfig, BertEncoder, BertModel
+import math
+import random
+import numpy as np
+import pandas as pd
+from tqdm import tqdm
+from collections import defaultdict
+import os
+import torch.nn.functional as F
 
 
 class ModelBase(nn.Module):
@@ -466,13 +473,14 @@ class SASRec(nn.Module):   # 원래 SASRec에서 hidden_units(일단 지움)이�
                 n_tests: int = 1538,
                 n_questions: int = 9455,
                 n_tags: int = 913,
-                n_conti_features: int = 13,
+                n_conti_features: int = 11,
                 # self-attention에 필요한 인자들
                 n_heads = 2,   # 있어야 함 
                 drop_out=0.2,   # 있어야 함
                 max_seq_len = 5 # 어쩔수없이 받는것 - 사용하지않는인자
                 ):
         super(SASRec, self).__init__()
+        num_heads = n_heads
         num_layers = n_layers
         self.embedding_size = hidden_dim
         dropout_rate = drop_out
@@ -482,55 +490,82 @@ class SASRec(nn.Module):   # 원래 SASRec에서 hidden_units(일단 지움)이�
         self.n_questions = n_questions
         self.n_tags = n_tags
         self.n_conti_features = n_conti_features
-        self.n
-        ##Past  
-        #data - past 임베딩 생성기
-        self.past_embedding_test = nn.Embedding(n_tests + 1, embedding_size, padding_idx=0)
-        self.past_embedding_question = nn.Embedding(n_questions + 1, embedding_size, padding_idx=0)
-        self.past_embedding_tag = nn.Embedding(n_tags + 1, embedding_size, padding_idx=0)
-        self.past_embedding_testTag=nn.Embedding(10, embedding_size, padding_idx=0)   # 학년으로 추정
-        self.num_categorical = 4 #위에 선언한 개수만큼 적어주세요 나중에 인자로 받아야함
+        
+        hd, intd = hidden_dim, hidden_dim // 3   # hyper-parameter
+        
+        
+        #past
+        
+        ##categorial 변환 layer
+        self.past_embedding_interaction = nn.Embedding(3, intd, padding_idx = 0) 
+        self.past_embedding_test = nn.Embedding(n_tests + 1, intd, padding_idx = 0)
+        self.past_embedding_question = nn.Embedding(n_questions + 1, intd, padding_idx = 0)
+        self.past_embedding_tag = nn.Embedding(n_tags + 1, intd, padding_idx = 0)
+        self.past_embedding_testTag=nn.Embedding(10, intd, padding_idx = 0)   # 학년으로 추정
+        self.past_correct_emb = nn.Embedding(3, hd, padding_idx = 0)
 
-        #self.past_correct_emb = nn.Embedding(3, hidden_dim, padding_idx = 0) # 0, 1, -1 #임베딩받기위해 사용할건데 일단 제거
+        ## 수치형 변환 layer
+        self.past_lin_activation=nn.Sequential(nn.Linear(1,(intd*5)//n_conti_features),nn.Sigmoid())
 
-        #past categorical 변수 concatnator
-        self.pat_cat_emb = nn.Sequential(
-            nn.Linear(self.num_categorical)*embedding_size, 
-        )
-        # 수치형 변환 layer
-        self.lin_activation=nn.Sequential(nn.Linear(1,(intd*5)//n_conti_features),nn.Sigmoid())
-
-        # 범주형 concat + LayerNorm
-        self.past_cat_emb=nn.Sequential(nn.Linear(intd*5, hidden_dim//2),
-                                    nn.LayerNorm(hidden_dim//2, eps=1e-6))
-        # 수치형 concat + LayerNorm
+        ## 범주형 (concat emb) linear + LayerNorm
+        self.past_cat_emb=nn.Sequential(nn.Linear(intd*5, hd//2),
+                                    nn.LayerNorm(hd//2, eps=1e-6))
+        ## 수치형 (concat emb) linear + LayerNorm
         self.past_conti_emb=nn.Sequential(nn.Linear(((intd*5)//n_conti_features)*n_conti_features, hidden_dim//2),
-                                    nn.LayerNorm(hidden_dim//2, eps=1e-6))
-        # embedding LayerNorm
-        self.emb_layernorm = nn.LayerNorm(hidden_dim, eps=1e-6)
+                                    nn.LayerNorm(hd//2, eps=1e-6))
+        
+        #current
+        ##categorial 변환 layer
+        self.current_embedding_interaction = nn.Embedding(3, intd, padding_idx = 0) 
+        self.current_embedding_test = nn.Embedding(n_tests + 1, intd, padding_idx = 0)
+        self.current_embedding_question = nn.Embedding(n_questions + 1, intd, padding_idx = 0)
+        self.current_embedding_tag = nn.Embedding(n_tags + 1, intd, padding_idx = 0)
+        self.current_embedding_testTag=nn.Embedding(10, intd, padding_idx = 0)   # 학년으로 추정
+        self.current_correct_emb = nn.Embedding(3, hd, padding_idx = 0)
 
-        # LSTM layer
+        ## 수치형 변환 layer
+        self.current_lin_activation=nn.Sequential(nn.Linear(1,(intd*5)//n_conti_features),nn.Sigmoid())
+
+        ## 범주형 (concat emb) linear + LayerNorm
+        self.current_cat_emb=nn.Sequential(nn.Linear(intd*5, hd//2),
+                                    nn.LayerNorm(hd//2, eps=1e-6))
+        ## 수치형 (concat emb) linear + LayerNorm
+        self.current_conti_emb=nn.Sequential(nn.Linear(((intd*5)//n_conti_features)*n_conti_features, hidden_dim//2),
+                                    nn.LayerNorm(hd//2, eps=1e-6))
+        
+        
+        
+        # embedding LayerNorm
+        self.emb_layernorm = nn.LayerNorm(hd, eps=1e-6)
+
+        # LSTM layer past
         self.past_lstm = nn.LSTM(
-            input_size = hidden_units,
-            hidden_size = hidden_units,
+            input_size = self.embedding_size,
+            hidden_size = self.embedding_size,
             num_layers = num_layers,
             batch_first = True,
             bidirectional = False,
             dropout = dropout_rate,
             )
 
-        self.blocks = nn.ModuleList([SASRecBlock(n_heads, hidden_units, dropout_rate) for _ in range(num_layers)])
+        # LSTM crruent layer
+        self.current_lstm = nn.LSTM(
+            input_size = self.embedding_size,
+            hidden_size = self.embedding_size,
+            num_layers = num_layers,
+            batch_first = True,
+            bidirectional = False,
+            dropout = dropout_rate,
+            )
+        
+        self.blocks = nn.ModuleList([SASRecBlock(num_heads, self.embedding_size, dropout_rate) for _ in range(num_layers)])
 
         # predict layer
         self.dropout = nn.Dropout(dropout_rate)
         self.predict_layer = nn.Sequential(
-            nn.Linear(hidden_dim * 2, 1),
+            nn.Linear(hd * 2, 1),
             nn.Sigmoid()
         )
-
-        self.hidden_dim = hidden_dim
-        self.num_heads = n_heads
-        self.num_layers = num_layers
 
     def forward(self, past_test, past_question, past_tag, past_correct,
                 past_dffclt, past_dscrmn, past_gussng,
@@ -558,32 +593,35 @@ class SASRec(nn.Module):   # 원래 SASRec에서 hidden_units(일단 지움)이�
                             'current_time_to_solve', 'current_time_to_solve_mean', 'current_prior_testTag_frequency']
 
         # past cat embedding
-        past_embed_interaction = self.embedding_interaction(past_interaction.int())
-        past_embed_test = self.embedding_test(past_test.int())
-        past_embed_question = self.embedding_question(past_question.int())
-        past_embed_tag = self.embedding_tag(past_tag.int())
-        past_embed_testTag = self.embedding_testTag(past_testTag.int())
+        past_embed_interaction = self.past_embedding_interaction(past_interaction.int())
+        past_embed_test = self.past_embedding_test(past_test.int())
+        past_embed_question = self.past_embedding_question(past_question.int())
+        past_embed_tag = self.past_embedding_tag(past_tag.int())
+        past_embed_testTag = self.past_embedding_testTag(past_testTag.int())
 
         ### 3pl dim ↑ & 비선형성 추가
-        past_dffclt_linear=self.lin_activation(past_dffclt.unsqueeze(dim=2))
-        past_dscrmn_linear=self.lin_activation(past_dscrmn.unsqueeze(dim=2))
-        past_gussng_linear=self.lin_activation(past_gussng.unsqueeze(dim=2))
+        past_dffclt_linear=self.past_lin_activation(past_dffclt.unsqueeze(dim=2))
+        past_dscrmn_linear=self.past_lin_activation(past_dscrmn.unsqueeze(dim=2))
+        past_gussng_linear=self.past_lin_activation(past_gussng.unsqueeze(dim=2))
         ### FE ###
-        past_user_correct_answer_eb = self.lin_activation(past_user_correct_answer.unsqueeze(dim=2))
-        past_user_total_answer_eb = self.lin_activation(past_user_total_answer.unsqueeze(dim=2))
-        past_user_acc_eb = self.lin_activation(past_user_acc.unsqueeze(dim=2))
-        past_user_mean_eb = self.lin_activation(past_user_mean.unsqueeze(dim=2))
-        past_relative_answer_mean_eb = self.lin_activation(past_relative_answer_mean.unsqueeze(dim=2))
-        past_time_to_solve_eb = self.lin_activation(past_time_to_solve.unsqueeze(dim=2))
-        past_time_to_solve_mean_eb = self.lin_activation(past_time_to_solve_mean.unsqueeze(dim=2))
-        past_prior_testTag_frequency_eb = self.lin_activation(past_prior_testTag_frequency.unsqueeze(dim=2))
+        past_user_correct_answer_eb = self.past_lin_activation(past_user_correct_answer.unsqueeze(dim=2))
+        past_user_total_answer_eb = self.past_lin_activation(past_user_total_answer.unsqueeze(dim=2))
+        past_user_acc_eb = self.past_lin_activation(past_user_acc.unsqueeze(dim=2))
+        past_user_mean_eb = self.past_lin_activation(past_user_mean.unsqueeze(dim=2))
+        past_relative_answer_mean_eb = self.past_lin_activation(past_relative_answer_mean.unsqueeze(dim=2))
+        past_time_to_solve_eb = self.past_lin_activation(past_time_to_solve.unsqueeze(dim=2))
+        past_time_to_solve_mean_eb = self.past_lin_activation(past_time_to_solve_mean.unsqueeze(dim=2))
+        past_prior_testTag_frequency_eb = self.past_lin_activation(past_prior_testTag_frequency.unsqueeze(dim=2))
         
+        # concat cat_embs
         past_cat_emb = torch.concat([past_embed_interaction, past_embed_test, 
                                     past_embed_question, past_embed_tag, 
                                     past_embed_testTag], dim=-1)
 
+        # cat_emb -> linear + LN
         past_cat_emb = self.past_cat_emb(past_cat_emb)
 
+        # concat conti_embs
         past_conti_emb = torch.concat([
                                 past_dffclt_linear,
                                 past_dscrmn_linear,
@@ -598,47 +636,59 @@ class SASRec(nn.Module):   # 원래 SASRec에서 hidden_units(일단 지움)이�
                                 past_prior_testTag_frequency_eb
                             ], dim=2)
 
+        # conti_emb -> Linear +LN
+        past_conti_emb = self.past_conti_emb(past_conti_emb)
+
+        # concat cat + conti -> final past_emb
         past_emb = torch.concat([past_cat_emb, past_conti_emb], dim = -1)
+        # final past_emb + past_correct_emb --> final final past_emb
         past_emb += self.past_correct_emb(past_correct.int())
+        # final emb -> LN
         past_emb = self.emb_layernorm(past_emb) # LayerNorm
 
         # masking 
-        mask_pad = torch.BoolTensor(past_correct > 0).unsqueeze(1).unsqueeze(1) # (batch_size, 1, 1, max_len)
+        mask_pad = torch.BoolTensor(past_correct.to('cpu') > 0).unsqueeze(1).unsqueeze(1) # (batch_size, 1, 1, max_len)
         mask_time = (1 - torch.triu(torch.ones((1, 1, past_correct.size(1), past_correct.size(1))), diagonal=1)).bool() # (batch_size, 1, max_len, max_len)
-        mask = (mask_pad & mask_time).to(self.device) # (batch_size, 1, max_len, max_len)
+        mask = (mask_pad & mask_time).to('cuda') # (batch_size, 1, max_len, max_len)
+        
+        # self-attention 
         for block in self.blocks:
             past_emb, attn_dist = block(past_emb, mask)
 
+        # LSTM layer
         past_emb, _ = self.past_lstm(past_emb)
 
         ######### current ######### 
         # current cat embedding
-        current_embed_interaction = self.embedding_interaction(current_interaction.int())
-        current_embed_test = self.embedding_test(current_test.int())
-        current_embed_question = self.embedding_question(current_question.int())
-        current_embed_tag = self.embedding_tag(current_tag.int())
-        current_embed_testTag = self.embedding_testTag(current_testTag.int())
+        current_embed_interaction = self.current_embedding_interaction(current_interaction.int())
+        current_embed_test = self.current_embedding_test(current_test.int())
+        current_embed_question = self.current_embedding_question(current_question.int())
+        current_embed_tag = self.current_embedding_tag(current_tag.int())
+        current_embed_testTag = self.current_embedding_testTag(current_testTag.int())
 
         ### 3pl dim ↑ & 비선형성 추가
-        current_dffclt_linear = self.lin_activation(current_dffclt.unsqueeze(dim=2))
-        current_dscrmn_linear = self.lin_activation(current_dscrmn.unsqueeze(dim=2))
-        current_gussng_linear = self.lin_activation(current_gussng.unsqueeze(dim=2))
+        current_dffclt_linear=self.current_lin_activation(current_dffclt.unsqueeze(dim=2))
+        current_dscrmn_linear=self.current_lin_activation(current_dscrmn.unsqueeze(dim=2))
+        current_gussng_linear=self.current_lin_activation(current_gussng.unsqueeze(dim=2))
         ### FE ###
-        current_user_correct_answer_eb = self.lin_activation(current_user_correct_answer.unsqueeze(dim=2))
-        current_user_total_answer_eb = self.lin_activation(current_user_total_answer.unsqueeze(dim=2))
-        current_user_acc_eb = self.lin_activation(current_user_acc.unsqueeze(dim=2))
-        current_user_mean_eb = self.lin_activation(current_user_mean.unsqueeze(dim=2))
-        current_relative_answer_mean_eb = self.lin_activation(current_relative_answer_mean.unsqueeze(dim=2))
-        current_time_to_solve_eb = self.lin_activation(current_time_to_solve.unsqueeze(dim=2))
-        current_time_to_solve_mean_eb = self.lin_activation(current_time_to_solve_mean.unsqueeze(dim=2))
-        current_prior_testTag_frequency_eb = self.lin_activation(current_prior_testTag_frequency.unsqueeze(dim=2))
+        current_user_correct_answer_eb = self.current_lin_activation(current_user_correct_answer.unsqueeze(dim=2))
+        current_user_total_answer_eb = self.current_lin_activation(current_user_total_answer.unsqueeze(dim=2))
+        current_user_acc_eb = self.current_lin_activation(current_user_acc.unsqueeze(dim=2))
+        current_user_mean_eb = self.current_lin_activation(current_user_mean.unsqueeze(dim=2))
+        current_relative_answer_mean_eb = self.current_lin_activation(current_relative_answer_mean.unsqueeze(dim=2))
+        current_time_to_solve_eb = self.current_lin_activation(current_time_to_solve.unsqueeze(dim=2))
+        current_time_to_solve_mean_eb = self.current_lin_activation(current_time_to_solve_mean.unsqueeze(dim=2))
+        current_prior_testTag_frequency_eb = self.current_lin_activation(current_prior_testTag_frequency.unsqueeze(dim=2))
 
+        # concat cat_embs
         current_cat_emb = torch.concat([current_embed_interaction, current_embed_test, 
                                         current_embed_question, current_embed_tag, 
                                         current_embed_testTag], dim=-1)
 
-        current_cat_emb = self.past_cat_emb(current_cat_emb)
+        # cat_emb -> linear + LN
+        current_cat_emb = self.current_cat_emb(current_cat_emb)
 
+        # concat conti_embs
         current_conti_emb = torch.concat([
                                     current_dffclt_linear,
                                     current_dscrmn_linear,
@@ -653,19 +703,29 @@ class SASRec(nn.Module):   # 원래 SASRec에서 hidden_units(일단 지움)이�
                                     current_prior_testTag_frequency_eb
                                 ], dim=2)
 
-        current_emb = torch.concat([current_cat_emb, current_conti_emb], dim=-1)
-        current_emb += self.past_correct_emb(current_correct.int())
+        # conti emb -> linear + LN
+        current_conti_emb = self.current_conti_emb(current_conti_emb)
+
+        # concat cat + conti -> final current_emb
+        current_emb = torch.concat([current_cat_emb, current_conti_emb], dim = -1)
+        # final emb -> LN
         current_emb = self.emb_layernorm(current_emb) # LayerNorm
 
         # masking 
-        mask_pad = torch.BoolTensor(current_correct > 0).unsqueeze(1).unsqueeze(1) # (batch_size, 1, 1, max_len)
+        mask_pad = torch.BoolTensor(current_correct.to('cpu') > 0).unsqueeze(1).unsqueeze(1) # (batch_size, 1, 1, max_len)
         mask_time = (1 - torch.triu(torch.ones((1, 1, current_correct.size(1), current_correct.size(1))), diagonal=1)).bool() # (batch_size, 1, max_len, max_len)
-        mask = (mask_pad & mask_time).to(self.device) # (batch_size, 1, max_len, max_len)
+        mask = (mask_pad & mask_time).to('cuda') # (batch_size, 1, max_len, max_len)
+        
+        # self-attention 
         for block in self.blocks:
             current_emb, attn_dist = block(current_emb, mask)
 
+        # LSTM layer
         current_emb, _ = self.current_lstm(current_emb)
-        emb = torch.concat([past_emb, now_emb], dim = -1)
+
+
+
+        emb = torch.concat([past_emb, current_emb], dim = -1)
         output = self.predict_layer(self.dropout(emb))
         return output
 """

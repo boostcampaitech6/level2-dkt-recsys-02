@@ -96,9 +96,11 @@ def train(train_loader: torch.utils.data.DataLoader,
     losses = []
     for step, batch in enumerate(train_loader):
         batch = {k: v.to(args.device) for k, v in batch.items()}
-        preds = model(**batch)   # 왜 k-v를 하나씩 주지?
-        targets = batch["correct"]
-        
+        preds = model(**batch)[:,-1].squeeze(1).to('cpu')   # 왜 k-v를 하나씩 주지?
+        if args.model == "sasrec":
+            targets = batch["current_correct"][:,-1].to('cpu')
+        else:
+            targets = batch["correct"][:,-1]
         loss = compute_loss(preds=preds, targets=targets)
         update_params(loss=loss, model=model, optimizer=optimizer,
                       scheduler=scheduler, args=args)
@@ -107,8 +109,12 @@ def train(train_loader: torch.utils.data.DataLoader,
             logger.info("Training steps: %s Loss: %.4f", step, loss.item())
 
         # predictions
-        preds = sigmoid(preds[:, -1])
-        targets = targets[:, -1]
+        if args.model == "sasrec":
+            preds = sigmoid(preds)
+            targets = targets
+        else:
+            preds = sigmoid(preds[:, -1])
+            targets = targets[:, -1]
 
         total_preds.append(preds.detach())
         total_targets.append(targets.detach())
@@ -229,7 +235,6 @@ def compute_loss(preds: torch.Tensor, targets: torch.Tensor):
     loss = get_criterion(pred=preds, target=targets.float())
 
     # 마지막 시퀀드에 대한 값만 loss 계산
-    loss = loss[:, -1]
     loss = torch.mean(loss)   # Batch내의 모든 data point에 대한 손실 평균
     return loss
 
