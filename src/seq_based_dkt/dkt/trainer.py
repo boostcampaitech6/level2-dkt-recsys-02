@@ -142,12 +142,14 @@ def validate(valid_loader: nn.Module, model: nn.Module, args):
     total_targets = []
     for step, batch in enumerate(valid_loader):
         batch = {k: v.to(args.device) for k, v in batch.items()}
-        preds = model(**batch)
-        targets = batch["correct"]  
+        preds = sigmoid(model(**batch)[:,-1].squeeze(1)).to('cpu') 
 
+        if args.model == "sasrec":
+            targets = batch["current_correct"][:,-1].to('cpu')
+        else:
+            targets = batch["correct"][:,-1]
+        
         # predictions
-        preds = sigmoid(preds[:, -1])
-        targets = targets[:, -1]
 
         total_preds.append(preds.detach())
         total_targets.append(targets.detach())

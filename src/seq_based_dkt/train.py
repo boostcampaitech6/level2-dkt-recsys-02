@@ -23,7 +23,7 @@ def main(args):
     preprocess.load_train_data(file_name=args.file_name)
     train_data: np.ndarray = preprocess.get_train_data()
     train_data, valid_data = preprocess.split_data(data=train_data)
-    #wandb.init(project="dkt", config=vars(args))
+    wandb.init(project="dkt", config=vars(args))
     
     logger.info("Building Model ...")
     model: torch.nn.Module = trainer.get_model(args=args).to(args.device)
