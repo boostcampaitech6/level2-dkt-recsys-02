@@ -16,7 +16,7 @@ def parse_args():
         "--asset_dir", default="asset/", type=str, help="data directory"
     )
     parser.add_argument(
-        "--file_name", default="train_data.csv", type=str, help="train file name"
+        "--file_name", default="train_data_3PL_DA.csv", type=str, help="train file name"
     )
     parser.add_argument(
         "--model_dir", default="models/", type=str, help="model directory"
@@ -31,7 +31,7 @@ def parse_args():
         "--output_dir", default="outputs/", type=str, help="output directory"
     )
     parser.add_argument(
-        "--test_file_name", default="test_data.csv", type=str, help="test file name"
+        "--test_file_name", default="test_data_3PL_DA.csv", type=str, help="test file name"
     )
 
     args = parser.parse_args()
