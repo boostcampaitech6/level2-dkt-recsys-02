@@ -8,7 +8,7 @@ from module import trainer
 from module.args import parse_args
 from module.dataloader import Preprocess
 from module.utils import get_logger, set_seeds, logging_conf, get_expname
-from model_configs.default_config import lightGBMParams, tabNetParams
+from model_configs.default_config import lightGBMParams, tabNetParams, xgboostParams, catBoostParams
 import json
 
 args = parse_args()
@@ -17,6 +17,14 @@ args = parse_args()
 if args.model == 'lgbm':
     default_params = lightGBMParams
     with open('./sweep/lgbm_sweep.json', 'r') as file:
+        sweep_config = json.load(file)
+elif args.model == 'xgb':
+    default_params = xgboostParams
+    with open('./sweep/xgb_sweep.json', 'r') as file:
+        sweep_config = json.load(file)
+elif args.model == 'catboost':
+    default_params = catBoostParams
+    with open('./sweep/catboost_sweep.json', 'r') as file:
         sweep_config = json.load(file)
 elif args.model == 'tabnet':
     default_params = tabNetParams

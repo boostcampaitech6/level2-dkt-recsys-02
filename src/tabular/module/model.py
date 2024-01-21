@@ -7,8 +7,9 @@ import matplotlib.pyplot as plt
 from wandb.lightgbm import wandb_callback, log_summary
 from wandb.xgboost import WandbCallback
 from xgboost import XGBClassifier
+from catboost import CatBoostClassifier, Pool
 from pytorch_tabnet.tab_model import TabNetClassifier
-from model_configs.default_config import lightGBMParams, tabNetParams, xgboostParams, cat_cols
+from model_configs.default_config import lightGBMParams, tabNetParams, xgboostParams, catBoostParams
 
 
 class LightGBMModel:
@@ -87,6 +88,42 @@ class XGBoostModel:
         else:
             raise ValueError("Model has not been trained. Please call fit() first.")
 
+
+class CatBoostModel:
+    def __init__(self, config, cat_idxs=[]):
+        self.config = config
+        self.model = None
+        self.params = catBoostParams
+        self.cat_idxs = cat_idxs
+
+    def setting(self):
+        self.params['learning_rate'] = self.config['learning_rate']
+        self.params['depth'] = self.config['depth']
+        self.params['iterations'] = self.config['iterations']
+        self.params['min_child_samples'] = self.config['min_child_samples']
+        return self.params
+
+    def fit(self, x_train, y_train, x_valid, y_valid):
+        params = self.setting()
+        train_data = Pool(x_train, label=y_train, cat_features=self.cat_idxs)
+        valid_data = Pool(x_valid, label=y_valid, cat_features=self.cat_idxs)
+
+        self.model = CatBoostClassifier(**params)
+
+        self.model.fit(
+            train_data,
+            eval_set=[valid_data],
+            early_stopping_rounds=self.config['early_stopping_rounds'],
+            verbose=True,
+            callbacks=[WandBCallback()]
+        )
+
+    def predict(self, X_test):
+        if self.model is not None:
+            preds = self.model.predict_proba(X_test)
+            return np.max(preds, axis=1)  # Assuming binary classification
+        else:
+            raise ValueError("Model has not been trained. Please call fit() first.")
 
 
 class TabNetModel:
@@ -197,3 +234,18 @@ class TabNetModel:
         auc_chart_artifact.add_file(auc_chart_path, name="auc_chart.png")
         wandb.log_artifact(auc_chart_artifact)
 
+
+class WandBCallback:
+    def after_iteration(self, info):
+        iteration = info.iteration
+        metrics = info.metrics
+        for metric_name, metric_value in metrics.items():
+            if metric_name == 'learn':
+                wandb.log({'Train Logloss': np.mean(metric_value['Logloss'])})
+                wandb.log({'Train Acc': np.mean(metric_value['Accuracy'])})
+            elif metric_name == 'validation':
+                wandb.log({'Valid Loss': np.mean(metric_value['Logloss'])})
+                wandb.log({'Valid Acc': np.mean(metric_value['Accuracy'])})
+                wandb.log({'Valid AUC': np.mean(metric_value['AUC'])})
+        return True
+    
