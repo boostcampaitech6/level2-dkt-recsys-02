@@ -10,7 +10,7 @@ import wandb
 from .criterion import get_criterion
 from .dataloader import get_loaders
 from .metric import get_metric
-from .model import LSTM, LSTMATTN, BERT, BERT_SASRec, LastQuery
+from .model import LSTM, LSTMATTN, BERT, BERT_LSTM, LastQuery #BERT_SASRec
 from .optimizer import get_optimizer
 from .scheduler import get_scheduler
 from .utils import get_logger, logging_conf
