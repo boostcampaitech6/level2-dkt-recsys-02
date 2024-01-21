@@ -186,56 +186,6 @@ class TabNetModel:
         else:
             raise ValueError("Model has not been trained. Please call fit() first.")
     
-    # def make_plot(self, model):
-
-    #     if not os.path.exists("plot"):
-    #         os.makedirs("plot")
-
-    #     loss_chart_artifact = wandb.Artifact("loss_chart", type="image")
-    #     acc_chart_artifact = wandb.Artifact("acc_chart", type="image")
-    #     auc_chart_artifact = wandb.Artifact("auc_chart", type="image")
-
-    #     # Loss 그래프 생성 및 저장
-    #     plt.plot(model.history['train_accuracy'], label='train')
-    #     plt.plot(model.history['valid_accuracy'], label='val')
-    #     plt.title('Acc per epoch')
-    #     plt.ylabel('Acc')
-    #     plt.xlabel('Epoch')
-    #     plt.legend()
-
-    #     acc_chart_path = "./plot/acc_chart.png"
-    #     plt.savefig(acc_chart_path)
-    #     acc_chart_artifact.add_file(acc_chart_path, name="acc_chart.png")
-    #     wandb.log_artifact(acc_chart_artifact)
-
-    #     # Accuracy 그래프 생성 및 저장
-    #     plt.figure()  # 새로운 그래프를 생성
-    #     plt.plot(model.history['loss'], label='train')
-    #     plt.plot(model.history['valid_logloss'], label='val')
-    #     plt.title('Loss per epoch')
-    #     plt.ylabel('Loss')
-    #     plt.xlabel('Epoch')
-    #     plt.legend()
-
-    #     loss_chart_path = "./plot/loss_chart.png"
-    #     plt.savefig(loss_chart_path)
-    #     loss_chart_artifact.add_file(loss_chart_path, name="loss_chart.png")
-    #     wandb.log_artifact(loss_chart_artifact)
-
-    #     # AUC 그래프 생성 및 저장
-    #     plt.figure()  # 새로운 그래프를 생성
-    #     plt.plot(model.history['train_auc'], label='train')
-    #     plt.plot(model.history['valid_auc'], label='val')
-    #     plt.title('AUC per epoch')
-    #     plt.ylabel('AUC')
-    #     plt.xlabel('Epoch')
-    #     plt.legend()
-
-    #     auc_chart_path = "./plot/auc_chart.png"
-    #     plt.savefig(auc_chart_path)
-    #     auc_chart_artifact.add_file(auc_chart_path, name="auc_chart.png")
-    #     wandb.log_artifact(auc_chart_artifact)
-
 
 class WandBCallback:
     def after_iteration(self, info):
