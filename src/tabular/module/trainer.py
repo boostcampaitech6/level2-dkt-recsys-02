@@ -52,8 +52,8 @@ def run(args, w_config):
     logger.info("TRAIN AUC : %.4f ACC : %.4f", auc, acc)
     
     # WandB Logging
-    wandb.log(dict(valid_acc=acc,
-                   valid_auc=auc))
+    # wandb.log(dict(valid_acc=acc,
+    #                valid_auc=auc))
     
     # INFERENCE
     logger.info("Preparing Test data ...")
