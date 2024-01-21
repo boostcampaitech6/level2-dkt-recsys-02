@@ -15,6 +15,7 @@ wandb
 outputs
 models
 asset
+catboost_info
 
 plot
 nohup.out
