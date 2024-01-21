@@ -3,4 +3,5 @@ scikit-learn
 tqdm
 wandb
 lightgbm
+xgboost
 matplotlib
