@@ -83,7 +83,6 @@ class Preprocess:
         df.astype(dtype)
         # 날짜시간 데이터로 변환
         df['Timestamp'] = pd.to_datetime(df['Timestamp'])
-        df.drop(df.index[-1], inplace=True)
         
         if is_train == False:
             # LEAVE LAST INTERACTION ONLY

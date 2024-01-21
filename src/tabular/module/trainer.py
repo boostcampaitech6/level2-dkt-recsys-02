@@ -55,7 +55,7 @@ def run(args, w_config):
     preprocess.load_test_data(file_name=args.test_file_name)
     test_data = preprocess.get_test_data()
     if args.model == 'tabnet':
-        test_data = preprocess.label_encoding(df=test_data)
+        test_data = preprocess.label_encoding(df=test_data, is_train=False)
     inference(args=args, test_data=test_data, model=model, exp_name=exp_name)
     
 
