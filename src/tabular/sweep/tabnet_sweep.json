@@ -1,0 +1,18 @@
+{
+    "name": "tabnet-sweep",
+    "method": "bayes",
+    "metric": {"goal": "maximize", "name": "acc"},
+    "parameters": {
+        "n_d": {"min": 4, "max": 16},
+        "n_a": {"min": 4, "max": 16},
+        "cat_emb_dim": {"min": 1, "max": 10},
+        "lr": {"min": 1e-4, "max": 1e-2},
+        "weight_decay": {"min": 1e-5, "max": 1e-3},
+        "step_size": {"min": 3, "max": 20},
+        "gamma": {"min": 0.7, "max": 0.9},
+        "max_epochs": {"min": 1, "max": 2},
+        "batch_size": {"values": [256]},
+        "patience": {"values": [3, 5, 10]},
+        "seed": {"value": 42}
+    }
+}
