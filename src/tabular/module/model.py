@@ -85,7 +85,7 @@ class XGBoostModel:
     def predict(self, X_test):
         if self.model is not None:
             preds = self.model.predict_proba(X_test.values)
-            return np.max(preds, axis=1)
+            return preds[:,1]
         else:
             raise ValueError("Model has not been trained. Please call fit() first.")
 
@@ -122,7 +122,7 @@ class CatBoostModel:
     def predict(self, X_test):
         if self.model is not None:
             preds = self.model.predict_proba(X_test)
-            return np.max(preds, axis=1)  # Assuming binary classification
+            return preds[:, 1] 
         else:
             raise ValueError("Model has not been trained. Please call fit() first.")
 
@@ -182,7 +182,7 @@ class TabNetModel:
     def predict(self, x_test):
         if self.model is not None:
             preds = self.model.predict_proba(x_test.values)
-            return np.max(preds, axis=1)
+            return preds[:,1]
         else:
             raise ValueError("Model has not been trained. Please call fit() first.")
     
