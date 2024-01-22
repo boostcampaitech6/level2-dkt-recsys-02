@@ -1,14 +1,14 @@
 {
     "name": "catboost-sweep",
     "method": "bayes",
-    "metric": {"goal": "maximize", "name": "Valid AUC"},
+    "metric": {"goal": "maximize", "name": "Val_Acc"},
     "parameters": {
         "depth": {"min": 3, "max": 16},
         "boosting_type": {"values": ["Ordered", "Plain"]},
-        "iterations": {"min": 10, "max": 200},
-        "learning_rate": {"min": 0.001, "max": 0.01},
+        "iterations": {"min": 30, "max": 1000},
+        "learning_rate": {"min": 0.0001, "max": 0.01},
         "colsample_bylevel": {"min": 0.1, "max": 0.9},
         "min_child_samples": {"min": 10, "max": 100},
-        "early_stopping_rounds": {"values": [5, 7, 10]}
+        "early_stopping_rounds": {"values": [5, 7, 10, 30]}
     }
 }

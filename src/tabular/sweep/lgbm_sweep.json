@@ -1,7 +1,7 @@
 {
     "name": "lgbm-sweep",
     "method": "bayes",
-    "metric": {"goal": "maximize", "name": "auc"},
+    "metric": {"goal": "maximize", "name": "Val_Acc"},
     "parameters": {
         "max_depth": {"min": 5, "max": 100},
         "boosting": {"values": ["gbdt", "dart"]},
