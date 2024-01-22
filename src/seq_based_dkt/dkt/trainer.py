@@ -10,7 +10,7 @@ import wandb
 from .criterion import get_criterion
 from .dataloader import get_loaders
 from .metric import get_metric
-from .model import LSTM, LSTMATTN, BERT, BERT_LSTM, LastQuery #BERT_SASRec
+from .model import LSTM, LSTMATTN, BERT, BERT_LSTM, LastQuery, Saint #BERT_SASRec
 from .optimizer import get_optimizer
 from .scheduler import get_scheduler
 from .utils import get_logger, logging_conf
@@ -208,7 +208,8 @@ def get_model(args) -> nn.Module:
             "lstmattn": LSTMATTN,
             "bert": BERT,
             "bert_lstm": BERT_LSTM,
-            "lastquery": LastQuery
+            "lastquery": LastQuery,
+            "saint": Saint
         }.get(model_name)(**model_args)
     except KeyError:
         logger.warn("No model name %s found", model_name)
