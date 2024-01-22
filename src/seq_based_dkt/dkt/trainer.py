@@ -66,7 +66,7 @@ def run(args,
             save_checkpoint(state={"epoch": epoch + 1,
                                    "state_dict": model_to_save.state_dict()},
                             model_dir=args.model_dir,   # dir path
-                            model_filename="best_model.pt")
+                            model_filename=f"{exp_name}.pt")
             """
             state_dict(): 모델의 매개변수 포함 딕셔너리 반환, 모델의 상태 저장 후 불러올 때 사용
             """
