@@ -5,6 +5,8 @@ metric:
   name: valid_auc_epoch
   goal : minimize
 parameters:
+  model:
+    values: ['saint']
   hidden_dim : 
     values : [64, 128, 256, 512]
   lr: 
