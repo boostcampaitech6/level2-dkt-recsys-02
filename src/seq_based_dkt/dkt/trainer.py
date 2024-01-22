@@ -13,7 +13,7 @@ from .metric import get_metric
 from .model import LSTM, LSTMATTN, BERT, BERT_LSTM, LastQuery, Saint #BERT_SASRec
 from .optimizer import get_optimizer
 from .scheduler import get_scheduler
-from .utils import get_logger, logging_conf, get_exname
+from .utils import get_logger, logging_conf, get_expname
 
 
 logger = get_logger(logger_conf=logging_conf)
@@ -189,7 +189,7 @@ def inference(args, test_data: np.ndarray, model: nn.Module) -> None:
     submission_artifact = wandb.Artifact('submission', type='output')
     submission_artifact.add_file(local_path=write_path)
     wandb.log_artifact(submission_artifact)
-    
+
     # with open(write_path, "w", encoding="utf8") as w:
     #     w.write("id,prediction\n")
     #     for id, p in enumerate(total_preds):
