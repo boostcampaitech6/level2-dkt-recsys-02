@@ -13,7 +13,7 @@ from .metric import get_metric
 from .model import LSTM, LSTMATTN, BERT, BERT_LSTM, LastQuery, Saint #BERT_SASRec
 from .optimizer import get_optimizer
 from .scheduler import get_scheduler
-from .utils import get_logger, logging_conf
+from .utils import get_logger, logging_conf, get_exname
 
 
 logger = get_logger(logger_conf=logging_conf)
@@ -22,7 +22,8 @@ logger = get_logger(logger_conf=logging_conf)
 def run(args,
         train_data: np.ndarray,
         valid_data: np.ndarray,
-        model: nn.Module):
+        model: nn.Module,
+        exp_name):
     train_loader, valid_loader = get_loaders(args=args, train=train_data, valid=valid_data)
 
     # For warmup scheduler which uses step interval
@@ -82,6 +83,10 @@ def run(args,
         # scheduler
         if args.scheduler == "plateau":
             scheduler.step(best_auc)   # 스케줄러 업데이트
+    
+    model_artifact = wandb.Artifact(f'{exp_name}', type='model')
+    model_artifact.add_file(local_path=f'{args.model_dir}{exp_name}.pt')
+    wandb.log_artifact(model_artifact)
 
 
 def train(train_loader: torch.utils.data.DataLoader,
@@ -181,7 +186,10 @@ def inference(args, test_data: np.ndarray, model: nn.Module) -> None:
     except Exception as e:
         logger.error("Error occurred while saving the submission: %s", str(e))
 
-
+    submission_artifact = wandb.Artifact('submission', type='output')
+    submission_artifact.add_file(local_path=write_path)
+    wandb.log_artifact(submission_artifact)
+    
     # with open(write_path, "w", encoding="utf8") as w:
     #     w.write("id,prediction\n")
     #     for id, p in enumerate(total_preds):

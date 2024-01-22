@@ -4,6 +4,7 @@ import random
 import numpy as np
 import torch
 
+import time
 
 def set_seeds(seed: int = 42):
     # 랜덤 시드를 설정하여 매 코드를 실행할 때마다 동일한 결과를 얻게 합니다.
@@ -45,3 +46,12 @@ logging_conf = {  # only used when 'user_wandb==False'
     },
     "root": {"level": "INFO", "handlers": ["console", "file_handler"]},
 }
+
+
+def get_expname(args):
+    now = time.localtime()
+    now_date = time.strftime('%Y%m%d', now)
+    now_hour = time.strftime('%X', now)
+    save_time = now_date + '_' + now_hour.replace(':', '')
+    expname = save_time + '_' + args.model
+    return expname

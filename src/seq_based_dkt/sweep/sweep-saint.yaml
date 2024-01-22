@@ -1,0 +1,19 @@
+program : train.py
+method : bayes
+name : Sequential/SAINT
+metric:
+  name: valid_auc_epoch
+  goal : minimize
+parameters:
+  hidden_dim : 
+    values : [64, 128, 256, 512]
+  lr: 
+    values : [0.01, 0.001, 0.0001]
+  n_layers : 
+    values : [1, 2, 3, 4]
+  n_heads  :
+    values : [1, 2, 3, 4]
+  n_epochs :
+    values : [1000]
+  patience :
+    values : [10]
