@@ -14,7 +14,7 @@ parameters:
   n_layers : 
     values : [1, 2, 3, 4]
   n_heads  :
-    values : [1, 2, 3, 4]
+    values : [1, 2, 4]
   n_epochs :
     values : [1000]
   patience :

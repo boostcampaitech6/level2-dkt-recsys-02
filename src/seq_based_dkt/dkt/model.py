@@ -565,6 +565,7 @@ class Saint(ModelBase):
         self.n_heads = n_heads
         self.max_seq_len = max_seq_len
         self.n_conti_features = n_conti_features
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
         # encoder combination projection
         self.enc_comb_proj = nn.Linear(self.hidden_dim//3 * 3 + (self.n_conti_features-1) * 5, self.hidden_dim)
@@ -704,13 +705,13 @@ class Saint(ModelBase):
         # encoder하고 decoder의 mask는 가로 세로 길이가 모두 동일하여
         # 사실 이렇게 3개로 나눌 필요가 없다
         if self.enc_mask is None or self.enc_mask.size(0) != seq_len:
-            self.enc_mask = self.get_mask(seq_len)
+            self.enc_mask = self.get_mask(seq_len).to(self.device)
 
         if self.dec_mask is None or self.dec_mask.size(0) != seq_len:
-            self.dec_mask = self.get_mask(seq_len)
+            self.dec_mask = self.get_mask(seq_len).to(self.device)
 
         if self.enc_dec_mask is None or self.enc_dec_mask.size(0) != seq_len:
-            self.enc_dec_mask = self.get_mask(seq_len)
+            self.enc_dec_mask = self.get_mask(seq_len).to(self.device)
 
 
         embed_enc = embed_enc.permute(1, 0, 2)
