@@ -14,23 +14,33 @@ import json
 args = parse_args()
 
 # JSON 파일에서 sweep 설정 읽어오기
-if args.model == 'lgbm':
-    default_params = lightGBMParams
-    with open('./sweep/lgbm_sweep.json', 'r') as file:
-        sweep_config = json.load(file)
-elif args.model == 'xgb':
-    default_params = xgboostParams
-    with open('./sweep/xgb_sweep.json', 'r') as file:
-        sweep_config = json.load(file)
-elif args.model == 'catboost':
-    default_params = catBoostParams
-    with open('./sweep/catboost_sweep.json', 'r') as file:
-        sweep_config = json.load(file)
-elif args.model == 'tabnet':
-    default_params = tabNetParams
-    with open('./sweep/tabnet_sweep.json', 'r') as file:
-        sweep_config = json.load(file)
-    
+try:
+    if args.model == 'lgbm':
+        default_params = lightGBMParams
+        with open('./sweep/lgbm_sweep.json', 'r') as file:
+            sweep_config = json.load(file)
+    elif args.model == 'xgb':
+        default_params = xgboostParams
+        with open('./sweep/xgb_sweep.json', 'r') as file:
+            sweep_config = json.load(file)
+    elif args.model == 'catboost':
+        default_params = catBoostParams
+        with open('./sweep/catboost_sweep.json', 'r') as file:
+            sweep_config = json.load(file)
+    elif args.model == 'tabnet':
+        default_params = tabNetParams
+        with open('./sweep/tabnet_sweep.json', 'r') as file:
+            sweep_config = json.load(file)
+    else:
+        raise ValueError("Invalid model type. Supported types are: lgbm, xgb, catboost, tabnet")
+
+except FileNotFoundError:
+    print(f"Error: JSON file not found for {args.model} model. Make sure the sweep configuration file exists.")
+    exit(1)
+except json.JSONDecodeError:
+    print(f"Error: JSON decoding failed for {args.model} model. Check the format of the sweep configuration file.")
+    exit(1)
+
 
 def main():
     os.makedirs(args.model_dir, exist_ok=True)
