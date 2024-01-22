@@ -567,7 +567,7 @@ class Saint(ModelBase):
         self.n_conti_features = n_conti_features
 
         # encoder combination projection
-        self.enc_comb_proj = nn.Linear(self.hidden_dim//3 * 3 + self.n_conti_features * 5, self.hidden_dim)
+        self.enc_comb_proj = nn.Linear(self.hidden_dim//3 * 3 + (self.n_conti_features-1) * 5, self.hidden_dim)
 
         # decoder combination projection
         self.dec_comb_proj = nn.Linear(self.hidden_dim//3 * 4 + self.n_conti_features * 5, self.hidden_dim)
@@ -645,7 +645,6 @@ class Saint(ModelBase):
                 assessment_mean_linear,
                 test_mean_linear,
                 knowledgeTag_mean_linear,
-                time_to_solve_linear,
                 prior_testTag_frequency_linear,
             ],
             dim=2,
@@ -692,8 +691,8 @@ class Saint(ModelBase):
                 assessment_mean_linear,
                 test_mean_linear,
                 knowledgeTag_mean_linear,
-                time_to_solve_linear,
                 prior_testTag_frequency_linear,
+                time_to_solve_linear,
                 embed_interaction,
             ],
             dim=2,
