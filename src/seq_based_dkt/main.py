@@ -18,7 +18,7 @@ def main(args):
     set_seeds(args.seed)
     args.device = "cuda" if torch.cuda.is_available() else "cpu"
     
-    logger.info("Preparing data ...")
+    logger.info("Preparing Train data ...")
     preprocess = Preprocess(args)
     preprocess.load_train_data(file_name=args.file_name)
     train_data: np.ndarray = preprocess.get_train_data()
@@ -34,8 +34,14 @@ def main(args):
     
     logger.info("Start Training ...")
     trainer.run(args=args, train_data=train_data, valid_data=valid_data, model=model, exp_name=exp_name)
-
+    
+    logger.info("Preparing Test data ...")
+    preprocess.load_test_data(file_name=args.test_file_name)
+    test_data: np.ndarray = preprocess.get_test_data()
+    trainer.inference(args=args, test_data=test_data, model=model)
+    
     wandb.finish()
+
 
 if __name__ == "__main__":
     args = parse_args()

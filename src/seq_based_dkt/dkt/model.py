@@ -1,7 +1,10 @@
+import numpy as np
+import math
 import torch
 import torch.nn as nn
 from transformers.models.bert.modeling_bert import BertConfig, BertEncoder, BertModel
 import torch.nn.functional as F
+
 
 class ModelBase(nn.Module):
     def __init__(
@@ -47,6 +50,8 @@ class ModelBase(nn.Module):
                 user_acc, user_mean, assessment_mean, test_mean,
                 knowledgeTag_mean, time_to_solve, prior_testTag_frequency):
         batch_size = interaction.size(0)
+        seq_len = interaction.size(1)
+
         # Embedding
         embed_interaction = self.embedding_interaction(interaction.int())
         embed_test = self.embedding_test(test.int())
@@ -512,3 +517,217 @@ class LastQuery(ModelBase):
         out = self.fc(out).view(batch_size, -1)
 
         return out
+    
+
+
+class PositionalEncoding(nn.Module):
+    def __init__(self, d_model, dropout=0.1, max_len=1000):
+        super(PositionalEncoding, self).__init__()
+        self.dropout = nn.Dropout(p=dropout)
+        self.scale = nn.Parameter(torch.ones(1))
+
+        pe = torch.zeros(max_len, d_model)
+        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
+        div_term = torch.exp(torch.arange(
+            0, d_model, 2).float() * (-math.log(10000.0) / d_model))
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        pe = pe.unsqueeze(0).transpose(0, 1)
+        self.register_buffer('pe', pe)
+
+    def forward(self, x):
+        x = x + self.scale * self.pe[:x.size(0), :]
+        return self.dropout(x)
+
+class Saint(ModelBase):
+    def __init__(
+            self,
+            hidden_dim: int = 64,
+            n_layers: int = 2,
+            n_tests: int = 1538,
+            n_questions: int = 9455,
+            n_tags: int = 913,
+            n_heads: int = 2,
+            drop_out: float = 0.1,
+            max_seq_len: float = 20,
+            n_conti_features: int = 13, ### 추가한 feature 개수
+            **kwargs
+    ):
+        super().__init__(
+            hidden_dim,
+            n_layers,
+            n_tests,
+            n_questions,
+            n_tags,
+        )
+        # self.dropout = self.args.dropout
+        self.dropout = drop_out
+        self.n_heads = n_heads
+        self.max_seq_len = max_seq_len
+        self.n_conti_features = n_conti_features
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+
+        # encoder combination projection
+        self.enc_comb_proj = nn.Linear(self.hidden_dim//3 * 3 + (self.n_conti_features-1) * 5, self.hidden_dim)
+
+        # decoder combination projection
+        self.dec_comb_proj = nn.Linear(self.hidden_dim//3 * 4 + self.n_conti_features * 5, self.hidden_dim)
+
+        # Positional encoding
+        self.pos_encoder = PositionalEncoding(self.hidden_dim, self.dropout, self.max_seq_len)
+        self.pos_decoder = PositionalEncoding(self.hidden_dim, self.dropout, self.max_seq_len)
+
+
+        self.transformer = nn.Transformer(
+            d_model=self.hidden_dim,
+            nhead=self.n_heads,
+            num_encoder_layers=self.n_layers,
+            num_decoder_layers=self.n_layers,
+            dim_feedforward=self.hidden_dim,
+            dropout=self.dropout,
+            activation='relu')
+
+        self.fc = nn.Linear(self.hidden_dim, 1)
+        self.activation = nn.Sigmoid()
+
+        self.enc_mask = None
+        self.dec_mask = None
+        self.enc_dec_mask = None
+
+    def get_mask(self, seq_len):
+        mask = torch.from_numpy(np.triu(np.ones((seq_len, seq_len)), k=1))
+
+        return mask.masked_fill(mask==1, float('-inf'))
+
+    def forward(self, test, question, tag, correct, mask, interaction, 
+                dffclt, dscrmn, gussng, 
+                testTag, user_correct_answer, user_total_answer,
+                user_acc, user_mean, assessment_mean, test_mean,
+                knowledgeTag_mean, time_to_solve, prior_testTag_frequency):
+        
+        batch_size = interaction.size(0)
+        seq_len = interaction.size(1)
+
+        # Embedding
+        # embed_interaction = self.embedding_interaction(interaction.int())
+        embed_test = self.embedding_test(test.int())
+        embed_question = self.embedding_question(question.int())
+        embed_tag = self.embedding_tag(tag.int())
+        embed_testTag = self.embedding_testTag(testTag.int())
+        
+        ### 3pl dim ↑ & 비선형성 추가
+        dffclt_linear=self.lin_activation(dffclt.unsqueeze(dim=2))
+        dscrmn_linear=self.lin_activation(dscrmn.unsqueeze(dim=2))
+        gussng_linear=self.lin_activation(gussng.unsqueeze(dim=2))
+        ### FE ###
+        user_correct_answer_linear = self.lin_activation(user_correct_answer.unsqueeze(dim=2))
+        user_total_answer_linear = self.lin_activation(user_total_answer.unsqueeze(dim=2))
+        user_acc_linear = self.lin_activation(user_acc.unsqueeze(dim=2))
+        user_mean_linear = self.lin_activation(user_mean.unsqueeze(dim=2))
+        assessment_mean_linear = self.lin_activation(assessment_mean.unsqueeze(dim=2))
+        test_mean_linear = self.lin_activation(test_mean.unsqueeze(dim=2))
+        knowledgeTag_mean_linear = self.lin_activation(knowledgeTag_mean.unsqueeze(dim=2))
+        time_to_solve_linear = self.lin_activation(time_to_solve.unsqueeze(dim=2))
+        prior_testTag_frequency_linear = self.lin_activation(prior_testTag_frequency.unsqueeze(dim=2))
+
+
+        embed_enc = torch.cat(
+            [   embed_test,
+                embed_question,
+                embed_tag,
+                dffclt_linear,
+                dscrmn_linear,
+                gussng_linear,
+                embed_testTag,
+                user_correct_answer_linear,
+                user_total_answer_linear,
+                user_acc_linear,
+                user_mean_linear,
+                assessment_mean_linear,
+                test_mean_linear,
+                knowledgeTag_mean_linear,
+                prior_testTag_frequency_linear,
+            ],
+            dim=2,
+        )
+
+        embed_enc = self.enc_comb_proj(embed_enc)
+
+        # DECODER
+        # Embedding
+        embed_interaction = self.embedding_interaction(interaction.int())
+        embed_test = self.embedding_test(test.int())
+        embed_question = self.embedding_question(question.int())
+        embed_tag = self.embedding_tag(tag.int())
+        embed_testTag = self.embedding_testTag(testTag.int())
+        
+        ### 3pl dim ↑ & 비선형성 추가
+        dffclt_linear=self.lin_activation(dffclt.unsqueeze(dim=2))
+        dscrmn_linear=self.lin_activation(dscrmn.unsqueeze(dim=2))
+        gussng_linear=self.lin_activation(gussng.unsqueeze(dim=2))
+        ### FE ###
+        user_correct_answer_linear = self.lin_activation(user_correct_answer.unsqueeze(dim=2))
+        user_total_answer_linear = self.lin_activation(user_total_answer.unsqueeze(dim=2))
+        user_acc_linear = self.lin_activation(user_acc.unsqueeze(dim=2))
+        user_mean_linear = self.lin_activation(user_mean.unsqueeze(dim=2))
+        assessment_mean_linear = self.lin_activation(assessment_mean.unsqueeze(dim=2))
+        test_mean_linear = self.lin_activation(test_mean.unsqueeze(dim=2))
+        knowledgeTag_mean_linear = self.lin_activation(knowledgeTag_mean.unsqueeze(dim=2))
+        time_to_solve_linear = self.lin_activation(time_to_solve.unsqueeze(dim=2))
+        prior_testTag_frequency_linear = self.lin_activation(prior_testTag_frequency.unsqueeze(dim=2))
+
+
+        embed_dec = torch.cat(
+            [   embed_test,
+                embed_question,
+                embed_tag,
+                dffclt_linear,
+                dscrmn_linear,
+                gussng_linear,
+                embed_testTag,
+                user_correct_answer_linear,
+                user_total_answer_linear,
+                user_acc_linear,
+                user_mean_linear,
+                assessment_mean_linear,
+                test_mean_linear,
+                knowledgeTag_mean_linear,
+                prior_testTag_frequency_linear,
+                time_to_solve_linear,
+                embed_interaction,
+            ],
+            dim=2,
+        )
+
+        embed_dec = self.dec_comb_proj(embed_dec)
+
+        # ATTENTION MASK 생성
+        # encoder하고 decoder의 mask는 가로 세로 길이가 모두 동일하여
+        # 사실 이렇게 3개로 나눌 필요가 없다
+        if self.enc_mask is None or self.enc_mask.size(0) != seq_len:
+            self.enc_mask = self.get_mask(seq_len).to(self.device)
+
+        if self.dec_mask is None or self.dec_mask.size(0) != seq_len:
+            self.dec_mask = self.get_mask(seq_len).to(self.device)
+
+        if self.enc_dec_mask is None or self.enc_dec_mask.size(0) != seq_len:
+            self.enc_dec_mask = self.get_mask(seq_len).to(self.device)
+
+
+        embed_enc = embed_enc.permute(1, 0, 2)
+        embed_dec = embed_dec.permute(1, 0, 2)
+
+        # Positional encoding
+        embed_enc = self.pos_encoder(embed_enc)
+        embed_dec = self.pos_decoder(embed_dec)
+
+        out = self.transformer(embed_enc, embed_dec.to(torch.float32),
+                               src_mask=self.enc_mask.to(torch.float32),
+                               tgt_mask=self.dec_mask.to(torch.float32),
+                               memory_mask=self.enc_dec_mask.to(torch.float32))
+
+        out = out.permute(1, 0, 2)
+        out = out.contiguous().view(batch_size, -1, self.hidden_dim)
+        out = self.fc(out).view(batch_size, -1)
+
+        return out    

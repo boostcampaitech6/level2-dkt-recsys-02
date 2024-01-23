@@ -10,10 +10,10 @@ import wandb
 from .criterion import get_criterion
 from .dataloader import get_loaders
 from .metric import get_metric
-from .model import LSTM, LSTMATTN, BERT, BERT_LSTM, LastQuery #BERT_SASRec
+from .model import LSTM, LSTMATTN, BERT, BERT_LSTM, LastQuery, Saint #BERT_SASRec
 from .optimizer import get_optimizer
 from .scheduler import get_scheduler
-from .utils import get_logger, logging_conf
+from .utils import get_logger, logging_conf, get_expname
 
 
 logger = get_logger(logger_conf=logging_conf)
@@ -22,7 +22,8 @@ logger = get_logger(logger_conf=logging_conf)
 def run(args,
         train_data: np.ndarray,
         valid_data: np.ndarray,
-        model: nn.Module):
+        model: nn.Module,
+        exp_name):
     train_loader, valid_loader = get_loaders(args=args, train=train_data, valid=valid_data)
 
     # For warmup scheduler which uses step interval
@@ -65,7 +66,7 @@ def run(args,
             save_checkpoint(state={"epoch": epoch + 1,
                                    "state_dict": model_to_save.state_dict()},
                             model_dir=args.model_dir,   # dir path
-                            model_filename="best_model.pt")
+                            model_filename=f"{exp_name}.pt")
             """
             state_dict(): 모델의 매개변수 포함 딕셔너리 반환, 모델의 상태 저장 후 불러올 때 사용
             """
@@ -82,6 +83,10 @@ def run(args,
         # scheduler
         if args.scheduler == "plateau":
             scheduler.step(best_auc)   # 스케줄러 업데이트
+    
+    model_artifact = wandb.Artifact(f'{exp_name}', type='model')
+    model_artifact.add_file(local_path=f'{args.model_dir}{exp_name}.pt')
+    wandb.log_artifact(model_artifact)
 
 
 def train(train_loader: torch.utils.data.DataLoader,
@@ -181,6 +186,9 @@ def inference(args, test_data: np.ndarray, model: nn.Module) -> None:
     except Exception as e:
         logger.error("Error occurred while saving the submission: %s", str(e))
 
+    submission_artifact = wandb.Artifact('submission', type='output')
+    submission_artifact.add_file(local_path=write_path)
+    wandb.log_artifact(submission_artifact)
 
     # with open(write_path, "w", encoding="utf8") as w:
     #     w.write("id,prediction\n")
@@ -208,7 +216,8 @@ def get_model(args) -> nn.Module:
             "lstmattn": LSTMATTN,
             "bert": BERT,
             "bert_lstm": BERT_LSTM,
-            "lastquery": LastQuery
+            "lastquery": LastQuery,
+            "saint": Saint
         }.get(model_name)(**model_args)
     except KeyError:
         logger.warn("No model name %s found", model_name)
