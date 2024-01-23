@@ -49,7 +49,7 @@ def run(args, w_config):
     all_val_acc = []
     all_val_auc = []
     
-    splitter = GroupKFold(n_splits=5)
+    splitter = GroupKFold(n_splits=args.fold)
     for fold, (train_index, valid_index) in enumerate(splitter.split(train_data, groups=train_data["userID"])):
         x_train, y_train = xy_data_split(train_data.iloc[train_index])
         x_valid, y_valid = xy_data_split(train_data.iloc[valid_index])
