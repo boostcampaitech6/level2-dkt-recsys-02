@@ -1,11 +1,11 @@
 import torch
 # 사용할 Feature 설정
 FEATS = [
-    # 'userID',
-    # 'assessmentItemID',
-    # 'testId',
-    # 'answerCode',
-    # 'Timestamp',
+    #  'userID',
+    #  'assessmentItemID',
+    #  'testId',
+    #  'answerCode',
+    #  'Timestamp',
     'KnowledgeTag',
     'Dffclt',
     'Dscrmn',
@@ -14,24 +14,24 @@ FEATS = [
     'user_correct_answer',
     'user_total_answer',
     'user_acc',
-    # 'user_sum',
+    #  'user_sum',
     'user_mean',
-    # 'assessment_sum',
-    # 'assessment_mean',
-    # 'test_sum',
-    # 'test_mean',
-    # 'knowledgeTag_sum',
-    # 'knowledgeTag_mean',
-    # 'testTag_sum',
-    # 'testTag_mean',
-    # 'relative_answer_assessment',
+    #  'assessment_sum',
+    #  'assessment_mean',
+    #  'test_sum',
+    #  'test_mean',
+    #  'knowledgeTag_sum',
+    #  'knowledgeTag_mean',
+    #  'testTag_sum',
+    #  'testTag_mean',
+    #  'relative_answer_assessment',
     'relative_answer_mean',
     'time_to_solve',
     'time_to_solve_mean',
-    # 'prior_assessment_frequency',
-    # 'prior_KnowledgeTag_frequency',
+    #  'prior_assessment_frequency',
+    #  'prior_KnowledgeTag_frequency',
     'prior_testTag_frequency'
-    ]
+ ]
 
 # 범주형 Feature 설정
 cat_cols = [
