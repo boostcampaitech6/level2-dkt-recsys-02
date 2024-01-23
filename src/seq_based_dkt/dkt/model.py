@@ -588,7 +588,7 @@ class Saint(ModelBase):
             num_decoder_layers=self.n_layers,
             dim_feedforward=self.hidden_dim,
             dropout=self.dropout,
-            activation='relu')
+            activation='gelu')
 
         self.fc = nn.Linear(self.hidden_dim, 1)
         self.activation = nn.Sigmoid()
