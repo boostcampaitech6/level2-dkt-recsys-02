@@ -1,0 +1,18 @@
+{
+    "name": "xgb-sweep",
+    "method": "bayes",
+    "metric": {"goal": "maximize", "name": "auc"},
+    "parameters": {
+        "max_depth": {"min": 1, "max": 10},
+        "eta": {"min": 0.01, "max": 0.2},
+        "subsample": {"min": 0.5, "max": 1.0},
+        "colsample_bytree": {"min": 0.5, "max": 1.0},
+        "gamma": {"min": 0.1, "max": 1.0},
+        "lambda": {"min": 0.0, "max": 1.0},
+        "alpha": {"min": 0.0, "max": 1.0},
+        "scale_pos_weight": {"min": 1, "max": 5},
+        "n_estimators": {"min": 10, "max": 50},
+        "early_stopping_rounds": {"min": 3, "max": 7},
+        "seed": {"values": [42]}
+    }
+}

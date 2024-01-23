@@ -5,8 +5,10 @@ import numpy as np
 import lightgbm as lgb
 import matplotlib.pyplot as plt
 from wandb.lightgbm import wandb_callback, log_summary
+from wandb.xgboost import WandbCallback
+from xgboost import XGBClassifier
 from pytorch_tabnet.tab_model import TabNetClassifier
-from model_configs.default_config import lightGBMParams, tabNetParams, cat_cols
+from model_configs.default_config import lightGBMParams, tabNetParams, xgboostParams, cat_cols
 
 
 class LightGBMModel:
@@ -41,6 +43,51 @@ class LightGBMModel:
             return self.model.predict(x_test)
         else:
             raise ValueError("Model has not been trained. Please call fit() first.")
+
+class XGBoostModel:
+    def __init__(self, config):
+        self.config = config
+        self.model = None
+        self.params = xgboostParams
+
+    def setting(self):
+        self.params['max_depth'] = self.config['max_depth']
+        self.params['eta'] = self.config['eta']
+        self.params['colsample_bytree'] = self.config['colsample_bytree']
+        self.params['scale_pos_weight'] = self.config['scale_pos_weight']
+        self.params['seed'] = self.config['seed']
+        self.params['n_estimators'] = self.config['n_estimators']
+        self.params['gamma'] = self.config['gamma']
+        self.params['lambda'] = self.config['lambda']
+        self.params['alpha'] = self.config['alpha']
+        return self.params
+
+    def fit(self, x_train, y_train, x_valid, y_valid):
+        params = self.setting()
+        self.model = XGBClassifier(**params)
+
+        self.model.fit(
+            x_train.values, 
+            y_train.values.flatten(),
+            eval_metric=['auc', 'error', 'logloss'],
+            eval_set=[(x_train.values, y_train.values.flatten()),
+                        (x_valid.values, y_valid.values.flatten())],
+            early_stopping_rounds=self.config['early_stopping_rounds'],
+            callbacks=[
+                WandbCallback(log_model=True,
+                            log_feature_importance=True,
+                            )
+            ],
+            verbose=True)
+
+    def predict(self, X_test):
+        if self.model is not None:
+            preds = self.model.predict_proba(X_test.values)
+            return np.max(preds, axis=1)
+        else:
+            raise ValueError("Model has not been trained. Please call fit() first.")
+
+
 
 class TabNetModel:
     def __init__(self, config, cuda, cat_idxs, cat_dims):
@@ -149,3 +196,4 @@ class TabNetModel:
         plt.savefig(auc_chart_path)
         auc_chart_artifact.add_file(auc_chart_path, name="auc_chart.png")
         wandb.log_artifact(auc_chart_artifact)
+

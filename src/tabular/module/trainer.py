@@ -7,7 +7,7 @@ import wandb
 
 from .dataloader import Preprocess, xy_data_split
 from .metric import get_metric
-from .model import LightGBMModel, TabNetModel
+from .model import LightGBMModel, XGBoostModel, TabNetModel
 from .utils import get_logger, logging_conf, get_expname
 from model_configs.default_config import FEATS, cat_cols
 
@@ -28,6 +28,8 @@ def run(args, w_config):
     logger.info("Building Model ...")
     if args.model == 'lgbm':
         model = LightGBMModel(config=w_config)
+    elif args.model == 'xgb':
+        model = XGBoostModel(config=w_config)
     elif args.model == 'tabnet':
         train_data, cat_idxs, cat_dims = preprocess.label_encoding(df=train_data, is_train=True)
         model = TabNetModel(config=w_config, cuda=args.device, cat_idxs=cat_idxs, cat_dims=cat_dims)
@@ -43,7 +45,7 @@ def run(args, w_config):
     
     # VALID
     preds = model.predict(x_valid)
-    acc, auc = get_metric(y_valid, preds)
+    auc, acc = get_metric(y_valid, preds)
     logger.info("TRAIN AUC : %.4f ACC : %.4f", auc, acc)
     
     # WandB Logging

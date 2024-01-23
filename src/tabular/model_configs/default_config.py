@@ -51,9 +51,25 @@ lightGBMParams={
     'lambda_l2': 0,
     'colsample_bytree':0.7,
     'objective':'binary',
-    'metric':'auc',
+    'metric':'acc',
     'early_stopping_rounds':10,
     'verbosity':1
+}
+
+# XGBoost default parameters
+xgboostParams = {
+    'objective': 'binary:logistic',  # 이진 분류 문제
+    'max_depth': 6,                  # 최대 트리의 깊이
+    'eta': 0.1,                      # 학습률
+    'subsample': 0.8,                # 훈련 데이터 샘플링 비율
+    'colsample_bytree': 0.8,         # 각 트리마다 사용되는 특성의 비율
+    'min_child_weight': 1,           # 리프 노드의 최소 가중치 합
+    'gamma': 0.1,                    # 리프 노드의 가중치를 더할지 결정하는 파라미터
+    'lambda': 1,                     # L2 정규화(규제) 파라미터
+    'alpha': 0,                      # L1 정규화(규제) 파라미터
+    'scale_pos_weight': 1,           # 데이터 클래스(레이블) 불균형 조절을 위한 가중치
+    'n_estimators': 30,             # 훈련 수
+    'seed': 42,
 }
 
 # TabNet default parameters
