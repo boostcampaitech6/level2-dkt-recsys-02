@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 from transformers.models.bert.modeling_bert import BertConfig, BertEncoder, BertModel
 import torch.nn.functional as F
+import re
 
 
 class ModelBase(nn.Module):
@@ -551,6 +552,7 @@ class Saint(ModelBase):
             drop_out: float = 0.1,
             max_seq_len: float = 20,
             n_conti_features: int = 13, ### 추가한 feature 개수
+            Tfixup: bool = True,
             **kwargs
     ):
         super().__init__(
@@ -560,11 +562,12 @@ class Saint(ModelBase):
             n_questions,
             n_tags,
         )
-        # self.dropout = self.args.dropout
+
         self.dropout = drop_out
         self.n_heads = n_heads
         self.max_seq_len = max_seq_len
         self.n_conti_features = n_conti_features
+        self.Tfixup = Tfixup
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
         # encoder combination projection
@@ -594,6 +597,54 @@ class Saint(ModelBase):
         self.dec_mask = None
         self.enc_dec_mask = None
 
+
+        # T-Fixup
+        if self.Tfixup:
+            # 초기화 (Initialization)
+            self.tfixup_initialization()
+            print("T-Fixup Initialization Done")
+
+            # 스케일링 (Scaling)
+            self.tfixup_scaling()
+            print(f"T-Fixup Scaling Done")
+
+
+    def tfixup_initialization(self):
+        # padding idx의 경우 모두 0으로 통일
+        padding_idx = 0
+
+        for name, param in self.named_parameters():
+            if len(param.shape) == 1:
+                continue
+            if re.match(r'^embedding*', name):
+                nn.init.normal_(param, mean=0, std=param.shape[1] ** -0.5)
+                nn.init.constant_(param[padding_idx], 0)
+            elif re.match(r'.*ln.*|.*bn.*', name):
+                continue
+            elif re.match(r'.*weight*', name):
+                # nn.init.xavier_uniform_(param)
+                nn.init.xavier_normal_(param)
+
+
+    def tfixup_scaling(self):
+        temp_state_dict = {}
+
+        # 특정 layer들의 값을 스케일링
+        for name, param in self.named_parameters():
+            if re.match(r'^embedding*', name):
+                temp_state_dict[name] = (9 * self.n_layers) ** (-1 / 4) * param
+            elif re.match(r'encoder.*ffn.*weight$|encoder.*attn.out_proj.weight$', name):
+                temp_state_dict[name] = (0.67 * (self.n_layers) ** (-1 / 4)) * param
+            elif re.match(r"encoder.*value.weight$", name):
+                temp_state_dict[name] = (0.67 * (self.n_layers) ** (-1 / 4)) * (param * (2**0.5))
+
+        for name in self.state_dict():
+            if name not in temp_state_dict:
+                temp_state_dict[name] = self.state_dict()[name]
+
+        self.load_state_dict(temp_state_dict)
+
+
     def get_mask(self, seq_len):
         mask = torch.from_numpy(np.triu(np.ones((seq_len, seq_len)), k=1))
 
@@ -609,7 +660,7 @@ class Saint(ModelBase):
         seq_len = interaction.size(1)
 
         # Embedding
-        # embed_interaction = self.embedding_interaction(interaction.int())
+        embed_interaction = self.embedding_interaction(interaction.int())
         embed_test = self.embedding_test(test.int())
         embed_question = self.embedding_question(question.int())
         embed_tag = self.embedding_tag(tag.int())
@@ -654,29 +705,6 @@ class Saint(ModelBase):
         embed_enc = self.enc_comb_proj(embed_enc)
 
         # DECODER
-        # Embedding
-        embed_interaction = self.embedding_interaction(interaction.int())
-        embed_test = self.embedding_test(test.int())
-        embed_question = self.embedding_question(question.int())
-        embed_tag = self.embedding_tag(tag.int())
-        embed_testTag = self.embedding_testTag(testTag.int())
-        
-        ### 3pl dim ↑ & 비선형성 추가
-        dffclt_linear=self.lin_activation(dffclt.unsqueeze(dim=2))
-        dscrmn_linear=self.lin_activation(dscrmn.unsqueeze(dim=2))
-        gussng_linear=self.lin_activation(gussng.unsqueeze(dim=2))
-        ### FE ###
-        user_correct_answer_linear = self.lin_activation(user_correct_answer.unsqueeze(dim=2))
-        user_total_answer_linear = self.lin_activation(user_total_answer.unsqueeze(dim=2))
-        user_acc_linear = self.lin_activation(user_acc.unsqueeze(dim=2))
-        user_mean_linear = self.lin_activation(user_mean.unsqueeze(dim=2))
-        assessment_mean_linear = self.lin_activation(assessment_mean.unsqueeze(dim=2))
-        test_mean_linear = self.lin_activation(test_mean.unsqueeze(dim=2))
-        knowledgeTag_mean_linear = self.lin_activation(knowledgeTag_mean.unsqueeze(dim=2))
-        time_to_solve_linear = self.lin_activation(time_to_solve.unsqueeze(dim=2))
-        prior_testTag_frequency_linear = self.lin_activation(prior_testTag_frequency.unsqueeze(dim=2))
-
-
         embed_dec = torch.cat(
             [   embed_test,
                 embed_question,

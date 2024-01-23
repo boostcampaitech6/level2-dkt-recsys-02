@@ -43,6 +43,7 @@ def parse_args():
     parser.add_argument("--n_layers", default=2, type=int, help="number of layers")
     parser.add_argument("--n_heads", default=2, type=int, help="number of heads")
     parser.add_argument("--drop_out", default=0.2, type=float, help="drop out rate")
+    parser.add_argument("--T_fixup", default=False, type=bool, help="T-fixup setting")
 
     # 훈련
     parser.add_argument("--n_epochs", default=20, type=int, help="number of epochs")
