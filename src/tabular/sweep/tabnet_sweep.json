@@ -1,7 +1,7 @@
 {
     "name": "tabnet-sweep",
     "method": "bayes",
-    "metric": {"goal": "maximize", "name": "Val_Acc"},
+    "metric": {"goal": "maximize", "name": "Overall_Val_Acc"},
     "parameters": {
         "n_d": {"min": 4, "max": 16},
         "n_a": {"min": 4, "max": 16},

@@ -4,6 +4,7 @@ import wandb
 import torch
 import numpy as np
 import wandb
+from sklearn.model_selection import GroupKFold
 
 from .dataloader import Preprocess, xy_data_split
 from .metric import get_metric
@@ -12,6 +13,7 @@ from .utils import get_logger, logging_conf, get_expname
 from model_configs.default_config import FEATS, cat_cols
 
 logger = get_logger(logger_conf=logging_conf)
+
 
 def run(args, w_config):
     exp_name = get_expname(args)
@@ -37,42 +39,64 @@ def run(args, w_config):
         train_data, cat_idxs, cat_dims = preprocess.label_encoding(df=train_data, is_train=True)
         model = TabNetModel(config=w_config, cuda=args.device, cat_idxs=cat_idxs, cat_dims=cat_dims)
     
-     
-    train_data, valid_data = preprocess.split_data(df=train_data)
-    x_train, y_train = xy_data_split(train_data)
-    x_valid, y_valid = xy_data_split(valid_data)
+    # # OOF 예측 초기화
+    # oof_predictions = np.zeros(len(train_data))
     
-    # TRAIN
-    logger.info("Start Training ...")
-    model.fit(x_train, y_train, x_valid, y_valid)
+    # Test 데이터 예측 결과 초기화
+    all_test_preds = []
     
-    # VALID
-    preds = model.predict(x_valid)
-    auc, acc = get_metric(y_valid, preds)
-    logger.info("TRAIN AUC : %.4f ACC : %.4f", auc, acc)
+    # Valid 데이터 예측 결과 초기화
+    all_val_acc = []
+    all_val_auc = []
     
-    # WandB Logging
-    wandb.log(dict(Val_Acc=acc,
-                   Val_AUC=auc))
-    
-    # INFERENCE
-    logger.info("Preparing Test data ...")
-    preprocess.load_test_data(file_name=args.test_file_name)
-    test_data = preprocess.get_test_data()
-    if args.model in ['tabnet', 'catboost']:
-        test_data = preprocess.label_encoding(df=test_data, is_train=False)
-    inference(args=args, test_data=test_data, model=model, exp_name=exp_name)
-    
+    splitter = GroupKFold(n_splits=5)
+    for fold, (train_index, valid_index) in enumerate(splitter.split(train_data, groups=train_data["userID"])):
+        x_train, y_train = xy_data_split(train_data.iloc[train_index])
+        x_valid, y_valid = xy_data_split(train_data.iloc[valid_index])
+        
+        logger.info(f"Fold {fold + 1}: Training ...")
+        model.fit(x_train, y_train, x_valid, y_valid)
+        
+        logger.info(f"Fold {fold + 1}: Validating ...")
+        preds = model.predict(x_valid)
+        
+        # 평가 및 Logging
+        auc, acc = get_metric(y_valid, preds)
+        logger.info(f"Fold {fold + 1}: Validation AUC: {auc}, Accuracy: {acc}")
+        
+        all_val_acc.append(acc)
+        all_val_auc.append(auc)
+        
+        wandb.log(dict(Val_AUC=auc, Val_Acc=acc))
 
-def inference(args, test_data, model, exp_name):
+        # INFERENCE FOR TEST DATA
+        logger.info(f"Fold {fold + 1}: Inference on Test Data ...")
+        preprocess.load_test_data(file_name=args.test_file_name)
+        test_data = preprocess.get_test_data()
+        if args.model in ['tabnet', 'catboost']:
+            test_data = preprocess.label_encoding(df=test_data, is_train=False)
+        test_preds = model.predict(test_data[FEATS])
+        
+        # 저장된 각 fold의 테스트 데이터 예측을 리스트에 추가
+        all_test_preds.append(test_preds)
+
+    # 각 fold에서의 테스트 데이터 예측 평균 계산
+    avg_test_preds = np.mean(all_test_preds, axis=0)
     
-    total_preds = model.predict(test_data)
+    # 각 fold 평가 평균 계산
+    overall_auc, overall_acc = np.mean(all_val_auc), np.mean(all_val_acc)
+    logger.info(f"Overall Valid AUC: {overall_auc}, Valid Accuracy: {overall_acc}")
     
+    wandb.log(dict(Overall_Val_AUC=overall_auc, Overall_Val_Acc=overall_acc))
+    
+    
+    # 최종 테스트 데이터 예측 결과 활용
+    logger.info(f"Out Of Fold Inference on Test Data ...")
     write_path = os.path.join(args.output_dir, f"{exp_name}_submission.csv")
     os.makedirs(name=args.output_dir, exist_ok=True)
     with open(write_path, "w", encoding="utf8") as w:
         w.write("id,prediction\n")
-        for id, p in enumerate(total_preds):
+        for id, p in enumerate(avg_test_preds):
             w.write("{},{}\n".format(id, p))
     logger.info("Successfully saved submission as %s", write_path)
     
@@ -80,3 +104,21 @@ def inference(args, test_data, model, exp_name):
     submission_artifact = wandb.Artifact('submission', type='output')
     submission_artifact.add_file(local_path=write_path)
     wandb.log_artifact(submission_artifact)
+    
+
+# def inference(args, test_data, model, exp_name):
+    
+#     total_preds = model.predict(test_data)
+    
+#     write_path = os.path.join(args.output_dir, f"{exp_name}_submission.csv")
+#     os.makedirs(name=args.output_dir, exist_ok=True)
+#     with open(write_path, "w", encoding="utf8") as w:
+#         w.write("id,prediction\n")
+#         for id, p in enumerate(total_preds):
+#             w.write("{},{}\n".format(id, p))
+#     logger.info("Successfully saved submission as %s", write_path)
+    
+#     # WandB Artifact Logging
+#     submission_artifact = wandb.Artifact('submission', type='output')
+#     submission_artifact.add_file(local_path=write_path)
+#     wandb.log_artifact(submission_artifact)

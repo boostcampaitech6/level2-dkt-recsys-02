@@ -1,7 +1,7 @@
 {
     "name": "catboost-sweep",
     "method": "bayes",
-    "metric": {"goal": "maximize", "name": "Val_Acc"},
+    "metric": {"goal": "maximize", "name": "Overall_Val_Acc"},
     "parameters": {
         "depth": {"min": 3, "max": 16},
         "boosting_type": {"values": ["Ordered", "Plain"]},
