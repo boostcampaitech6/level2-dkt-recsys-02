@@ -1,36 +1,42 @@
 import math
 import os
 import wandb
-
+import torch
 import numpy as np
 import wandb
 
 from .dataloader import Preprocess, xy_data_split
 from .metric import get_metric
-from .model import LightGBMModel
+from .model import LightGBMModel, TabNetModel
 from .utils import get_logger, logging_conf, get_expname
+from model_configs.default_config import FEATS, cat_cols
 
 logger = get_logger(logger_conf=logging_conf)
 
 def run(args, w_config):
     exp_name = get_expname(args)
+    args.device = "cuda" if torch.cuda.is_available() else "cpu"
+    
     wandb.run.name = exp_name
     wandb.run.save()
     
     logger.info("Preparing Train data ...")
     preprocess = Preprocess(args)
-    preprocess.load_train_data(file_name=args.file_name)
+    preprocess.load_train_data(file_name=args.file_name)    
     train_data: np.ndarray = preprocess.get_train_data()
-    train_data, valid_data = preprocess.split_data(df=train_data)
     
+    logger.info("Building Model ...")
+    if args.model == 'lgbm':
+        model = LightGBMModel(config=w_config)
+    elif args.model == 'tabnet':
+        train_data, cat_idxs, cat_dims = preprocess.label_encoding(df=train_data, is_train=True)
+        model = TabNetModel(config=w_config, cuda=args.device, cat_idxs=cat_idxs, cat_dims=cat_dims)
+    
+     
+    train_data, valid_data = preprocess.split_data(df=train_data)
     x_train, y_train = xy_data_split(train_data)
     x_valid, y_valid = xy_data_split(valid_data)
     
-    logger.info("Building Model ...")
-    if args.model_name == 'lgbm':
-        model = LightGBMModel(config=w_config)
-
-
     # TRAIN
     logger.info("Start Training ...")
     model.fit(x_train, y_train, x_valid, y_valid)
@@ -48,6 +54,8 @@ def run(args, w_config):
     logger.info("Preparing Test data ...")
     preprocess.load_test_data(file_name=args.test_file_name)
     test_data = preprocess.get_test_data()
+    if args.model == 'tabnet':
+        test_data = preprocess.label_encoding(df=test_data, is_train=False)
     inference(args=args, test_data=test_data, model=model, exp_name=exp_name)
     
 

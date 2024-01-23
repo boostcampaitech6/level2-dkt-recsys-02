@@ -53,5 +53,5 @@ def get_expname(args):
     now_date = time.strftime('%Y%m%d', now)
     now_hour = time.strftime('%X', now)
     save_time = now_date + '_' + now_hour.replace(':', '')
-    expname = save_time + '_' + args.model_name
+    expname = save_time + '_' + args.model
     return expname
