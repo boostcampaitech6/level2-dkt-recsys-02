@@ -9,6 +9,7 @@ from wandb.xgboost import WandbCallback
 from xgboost import XGBClassifier
 from catboost import CatBoostClassifier, Pool
 from pytorch_tabnet.tab_model import TabNetClassifier
+from pytorch_tabnet.callbacks import Callback
 from model_configs.default_config import lightGBMParams, tabNetParams, xgboostParams, catBoostParams
 
 
@@ -174,8 +175,9 @@ class TabNetModel:
             batch_size=self.config['batch_size'],
             virtual_batch_size=128,
             drop_last=False,
+            callbacks=[WandBCallbackTabNet()]
         )
-        self.make_plot(model = self.model)
+        # self.make_plot(model = self.model)
 
     def predict(self, x_test):
         if self.model is not None:
@@ -184,56 +186,6 @@ class TabNetModel:
         else:
             raise ValueError("Model has not been trained. Please call fit() first.")
     
-    def make_plot(self, model):
-
-        if not os.path.exists("plot"):
-            os.makedirs("plot")
-
-        loss_chart_artifact = wandb.Artifact("loss_chart", type="image")
-        acc_chart_artifact = wandb.Artifact("acc_chart", type="image")
-        auc_chart_artifact = wandb.Artifact("auc_chart", type="image")
-
-        # Loss 그래프 생성 및 저장
-        plt.plot(model.history['train_accuracy'], label='train')
-        plt.plot(model.history['valid_accuracy'], label='val')
-        plt.title('Acc per epoch')
-        plt.ylabel('Acc')
-        plt.xlabel('Epoch')
-        plt.legend()
-
-        acc_chart_path = "./plot/acc_chart.png"
-        plt.savefig(acc_chart_path)
-        acc_chart_artifact.add_file(acc_chart_path, name="acc_chart.png")
-        wandb.log_artifact(acc_chart_artifact)
-
-        # Accuracy 그래프 생성 및 저장
-        plt.figure()  # 새로운 그래프를 생성
-        plt.plot(model.history['loss'], label='train')
-        plt.plot(model.history['valid_logloss'], label='val')
-        plt.title('Loss per epoch')
-        plt.ylabel('Loss')
-        plt.xlabel('Epoch')
-        plt.legend()
-
-        loss_chart_path = "./plot/loss_chart.png"
-        plt.savefig(loss_chart_path)
-        loss_chart_artifact.add_file(loss_chart_path, name="loss_chart.png")
-        wandb.log_artifact(loss_chart_artifact)
-
-        # AUC 그래프 생성 및 저장
-        plt.figure()  # 새로운 그래프를 생성
-        plt.plot(model.history['train_auc'], label='train')
-        plt.plot(model.history['valid_auc'], label='val')
-        plt.title('AUC per epoch')
-        plt.ylabel('AUC')
-        plt.xlabel('Epoch')
-        plt.legend()
-
-        auc_chart_path = "./plot/auc_chart.png"
-        plt.savefig(auc_chart_path)
-        auc_chart_artifact.add_file(auc_chart_path, name="auc_chart.png")
-        wandb.log_artifact(auc_chart_artifact)
-
 
 class WandBCallback:
     def after_iteration(self, info):
@@ -248,4 +200,17 @@ class WandBCallback:
                 wandb.log({'Valid Acc': np.mean(metric_value['Accuracy'])})
                 wandb.log({'Valid AUC': np.mean(metric_value['AUC'])})
         return True
-    
+
+class WandBCallbackTabNet(Callback):
+    def __init__(self):
+        super().__init__()
+
+    def on_epoch_end(self, epoch, logs=None):
+        wandb.log({"Train AUC": logs["train_auc"]})
+        wandb.log({"Train AUC": logs["valid_auc"]})
+
+        wandb.log({"Train Loss": logs["loss"]})
+        wandb.log({"Valid Loss": logs["valid_logloss"]})
+        
+        wandb.log({"Train Acc": logs["train_accuracy"]})
+        wandb.log({"Train Acc": logs["valid_accuracy"]})
