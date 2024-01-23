@@ -72,6 +72,16 @@ xgboostParams = {
     'seed': 42,
 }
 
+# CatBoost default parameters
+catBoostParams = {
+    'custom_metric': ['Logloss', 'AUC', 'Accuracy'],
+    # 'eval_metric': 'AUC',
+    'learning_rate': 1e-3,
+    'depth': 4,
+    'iterations': 1000,
+    'min_child_samples': 40,
+}
+
 # TabNet default parameters
 tabNetParams = {
     'n_d': 8,
@@ -91,3 +101,4 @@ tabNetParams = {
     'seed': 42,
     'device_name': 'cpu'
 }
+

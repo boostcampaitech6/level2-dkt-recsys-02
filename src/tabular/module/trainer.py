@@ -7,7 +7,7 @@ import wandb
 
 from .dataloader import Preprocess, xy_data_split
 from .metric import get_metric
-from .model import LightGBMModel, XGBoostModel, TabNetModel
+from .model import LightGBMModel, XGBoostModel, CatBoostModel, TabNetModel
 from .utils import get_logger, logging_conf, get_expname
 from model_configs.default_config import FEATS, cat_cols
 
@@ -30,6 +30,9 @@ def run(args, w_config):
         model = LightGBMModel(config=w_config)
     elif args.model == 'xgb':
         model = XGBoostModel(config=w_config)
+    elif args.model == 'catboost':
+        train_data, cat_idxs, cat_dims = preprocess.label_encoding(df=train_data, is_train=True)
+        model = CatBoostModel(config=w_config, cat_idxs=cat_idxs)
     elif args.model == 'tabnet':
         train_data, cat_idxs, cat_dims = preprocess.label_encoding(df=train_data, is_train=True)
         model = TabNetModel(config=w_config, cuda=args.device, cat_idxs=cat_idxs, cat_dims=cat_dims)
@@ -56,7 +59,7 @@ def run(args, w_config):
     logger.info("Preparing Test data ...")
     preprocess.load_test_data(file_name=args.test_file_name)
     test_data = preprocess.get_test_data()
-    if args.model == 'tabnet':
+    if args.model in ['tabnet', 'catboost']:
         test_data = preprocess.label_encoding(df=test_data, is_train=False)
     inference(args=args, test_data=test_data, model=model, exp_name=exp_name)
     

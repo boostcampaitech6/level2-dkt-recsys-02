@@ -4,5 +4,6 @@ tqdm
 wandb
 lightgbm
 xgboost
+catboost
 matplotlib
 pytorch-tabnet
