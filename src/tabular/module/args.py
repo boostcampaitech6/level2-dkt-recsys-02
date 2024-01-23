@@ -33,7 +33,9 @@ def parse_args():
     parser.add_argument(
         "--test_file_name", default="test_data_3PL.csv", type=str, help="test file name"
     )
-
+    parser.add_argument(
+        "--fold", default=5, type=int, help="K-fold"
+    )
     args = parser.parse_args()
 
     return args
