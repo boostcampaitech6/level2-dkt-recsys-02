@@ -10,10 +10,10 @@ import wandb
 from .criterion import get_criterion
 from .dataloader import get_loaders
 from .metric import get_metric
-from .model import LSTM, LSTMATTN, BERT, BERT_LSTM, LastQuery, Saint #BERT_SASRec
+from .model import LSTM, LSTMATTN, BERT, SASRec_pos, SAINTRec
 from .optimizer import get_optimizer
 from .scheduler import get_scheduler
-from .utils import get_logger, logging_conf, get_expname
+from .utils import get_logger, logging_conf
 
 
 logger = get_logger(logger_conf=logging_conf)
@@ -22,8 +22,7 @@ logger = get_logger(logger_conf=logging_conf)
 def run(args,
         train_data: np.ndarray,
         valid_data: np.ndarray,
-        model: nn.Module,
-        exp_name):
+        model: nn.Module):
     train_loader, valid_loader = get_loaders(args=args, train=train_data, valid=valid_data)
 
     # For warmup scheduler which uses step interval
@@ -55,21 +54,14 @@ def run(args,
                        valid_auc_epoch=auc,
                        valid_acc_epoch=acc))
         
-        if auc > best_auc:   # auc가 이전 best_auc보다 높은 경우
+        if auc > best_auc:
             best_auc = auc
             # nn.DataParallel로 감싸진 경우 원래의 model을 가져옵니다.
             model_to_save = model.module if hasattr(model, "module") else model
-            """
-            nn.DataParallel: 여러 GPU에서 병렬로 실행할 때 사용되는 PyTorch의 래퍼 클래스
-            model_to_save에 model 자체를 저장
-            """
             save_checkpoint(state={"epoch": epoch + 1,
                                    "state_dict": model_to_save.state_dict()},
-                            model_dir=args.model_dir,   # dir path
-                            model_filename=f"{exp_name}.pt")
-            """
-            state_dict(): 모델의 매개변수 포함 딕셔너리 반환, 모델의 상태 저장 후 불러올 때 사용
-            """
+                            model_dir=args.model_dir,
+                            model_filename="best_model.pt")
             early_stopping_counter = 0
         else:
             early_stopping_counter += 1
@@ -82,11 +74,14 @@ def run(args,
 
         # scheduler
         if args.scheduler == "plateau":
-            scheduler.step(best_auc)   # 스케줄러 업데이트
-    
-    model_artifact = wandb.Artifact(f'{exp_name}', type='model')
-    model_artifact.add_file(local_path=f'{args.model_dir}{exp_name}.pt')
-    wandb.log_artifact(model_artifact)
+            scheduler.step(best_auc)
+
+def move_tensors_to_device(nested_dict, device):
+    for key, value in nested_dict.items():
+        if isinstance(value, torch.Tensor):
+            nested_dict[key] = value.to(device)
+        elif isinstance(value, dict):
+            move_tensors_to_device(value, device)
 
 
 def train(train_loader: torch.utils.data.DataLoader,
@@ -100,8 +95,8 @@ def train(train_loader: torch.utils.data.DataLoader,
     total_targets = []
     losses = []
     for step, batch in enumerate(train_loader):
-        batch = {k: v.to(args.device) for k, v in batch.items()}
-        preds = model(**batch)   # 왜 k-v를 하나씩 주지?
+        move_tensors_to_device(batch, args.device)
+        preds = model(**batch)
         targets = batch["correct"]
         
         loss = compute_loss(preds=preds, targets=targets)
@@ -117,13 +112,8 @@ def train(train_loader: torch.utils.data.DataLoader,
 
         total_preds.append(preds.detach())
         total_targets.append(targets.detach())
-        """
-        detach(): 메모리 상에서 tensor의 복사본 생성 
-        --> 연산 그래프 및 기울기 계산에 영향을 주지 않으면서 tensor값을 사용할 때 필요
-        """
         losses.append(loss)
 
-    # 모든 batch에 대한 tensor를 하나의 tensor로 결합 후 CPU 이동 & numpy변환
     total_preds = torch.concat(total_preds).cpu().numpy()
     total_targets = torch.concat(total_targets).cpu().numpy()
 
@@ -140,9 +130,9 @@ def validate(valid_loader: nn.Module, model: nn.Module, args):
     total_preds = []
     total_targets = []
     for step, batch in enumerate(valid_loader):
-        batch = {k: v.to(args.device) for k, v in batch.items()}
+        move_tensors_to_device(batch, args.device)
         preds = model(**batch)
-        targets = batch["correct"]  
+        targets = batch["correct"]
 
         # predictions
         preds = sigmoid(preds[:, -1])
@@ -154,7 +144,7 @@ def validate(valid_loader: nn.Module, model: nn.Module, args):
     total_preds = torch.concat(total_preds).cpu().numpy()
     total_targets = torch.concat(total_targets).cpu().numpy()
 
-    # Valid AUC / ACC
+    # Train AUC / ACC
     auc, acc = get_metric(targets=total_targets, preds=total_preds)
     logger.info("VALID AUC : %.4f ACC : %.4f", auc, acc)
     return auc, acc
@@ -166,7 +156,7 @@ def inference(args, test_data: np.ndarray, model: nn.Module) -> None:
 
     total_preds = []
     for step, batch in enumerate(test_loader):
-        batch = {k: v.to(args.device) for k, v in batch.items()}
+        move_tensors_to_device(batch, args.device)
         preds = model(**batch)
 
         # predictions
@@ -176,25 +166,11 @@ def inference(args, test_data: np.ndarray, model: nn.Module) -> None:
 
     write_path = os.path.join(args.output_dir, "submission.csv")
     os.makedirs(name=args.output_dir, exist_ok=True)
-
-    try:
-        with open(write_path, "w", encoding="utf8") as w:
-            w.write("id,prediction\n")
-            for id, p in enumerate(total_preds):
-                w.write("{},{}\n".format(id, p))
-        logger.info("Successfully saved submission as %s", write_path)
-    except Exception as e:
-        logger.error("Error occurred while saving the submission: %s", str(e))
-
-    submission_artifact = wandb.Artifact('submission', type='output')
-    submission_artifact.add_file(local_path=write_path)
-    wandb.log_artifact(submission_artifact)
-
-    # with open(write_path, "w", encoding="utf8") as w:
-    #     w.write("id,prediction\n")
-    #     for id, p in enumerate(total_preds):
-    #         w.write("{},{}\n".format(id, p))
-    # logger.info("Successfully saved submission as %s", write_path)
+    with open(write_path, "w", encoding="utf8") as w:
+        w.write("id,prediction\n")
+        for id, p in enumerate(total_preds):
+            w.write("{},{}\n".format(id, p))
+    logger.info("Successfully saved submission as %s", write_path)
 
 
 def get_model(args) -> nn.Module:
@@ -210,15 +186,13 @@ def get_model(args) -> nn.Module:
     )
     try:
         model_name = args.model.lower()
-        ### 새로운 모델 추가 ###
         model = {
             "lstm": LSTM,
             "lstmattn": LSTMATTN,
             "bert": BERT,
-            "bert_lstm": BERT_LSTM,
-            "lastquery": LastQuery,
-            "saint": Saint
-        }.get(model_name)(**model_args)
+            "sasrec_pos": SASRec_pos,
+            "saintrec" : SAINTRec,
+            }.get(model_name)(**model_args)
     except KeyError:
         logger.warn("No model name %s found", model_name)
     except Exception as e:
@@ -239,7 +213,7 @@ def compute_loss(preds: torch.Tensor, targets: torch.Tensor):
 
     # 마지막 시퀀드에 대한 값만 loss 계산
     loss = loss[:, -1]
-    loss = torch.mean(loss)   # Batch내의 모든 data point에 대한 손실 평균
+    loss = torch.mean(loss)
     return loss
 
 
@@ -249,7 +223,7 @@ def update_params(loss: torch.Tensor,
                   scheduler: torch.optim.lr_scheduler._LRScheduler,
                   args):
     loss.backward()
-    nn.utils.clip_grad_norm_(model.parameters(), args.clip_grad)   # 학습 안정화
+    nn.utils.clip_grad_norm_(model.parameters(), args.clip_grad)
     if args.scheduler == "linear_warmup":
         scheduler.step()
     optimizer.step()
@@ -261,8 +235,7 @@ def save_checkpoint(state: dict, model_dir: str, model_filename: str) -> None:
     save_path = os.path.join(model_dir, model_filename)
     logger.info("saving model as %s...", save_path)
     os.makedirs(model_dir, exist_ok=True)
-    torch.save(state, save_path)   # PyTorch 객체 저장
-    
+    torch.save(state, save_path)
 
 
 def load_model(args):

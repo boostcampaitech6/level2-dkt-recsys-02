@@ -1,3 +1,4 @@
+######################### DataLoader_PC.VER #########################
 import os
 import random
 import time
@@ -7,8 +8,7 @@ from typing import Tuple
 import numpy as np
 import pandas as pd
 import torch
-from sklearn.preprocessing import LabelEncoder, StandardScaler
-
+from sklearn.preprocessing import LabelEncoder
 
 
 class Preprocess:
@@ -42,7 +42,7 @@ class Preprocess:
 
     def __save_labels(self, encoder: LabelEncoder, name: str) -> None:
         le_path = os.path.join(self.args.asset_dir, name + "_classes.npy")
-        np.save(le_path, encoder.classes_)   # .classes__: 변환된 값에 대한 원본값
+        np.save(le_path, encoder.classes_)
 
     def __preprocessing(self, df: pd.DataFrame, is_train: bool = True) -> pd.DataFrame:
         cate_cols = ["assessmentItemID", "testId", "KnowledgeTag"]
@@ -51,45 +51,39 @@ class Preprocess:
             os.makedirs(self.args.asset_dir)
 
         for col in cate_cols:
-            # +) 회귀 모델에서 LabelEncoder가 성능이 떨어질 수 있음
             le = LabelEncoder()
             if is_train:
-                # For UNKNOWN class 
-                # (∵train에는 없지만 valid || test에 존재할 수 있는 새로운 범주값을 처리하기 위함) 
+                # For UNKNOWN class
                 a = df[col].unique().tolist() + ["unknown"]
-                le.fit(a)   # 각 범주형 값에 대해 고유한 정수값 할당하는 규칙 학습
+                le.fit(a)
                 self.__save_labels(le, col)
             else:
                 label_path = os.path.join(self.args.asset_dir, col + "_classes.npy")
                 le.classes_ = np.load(label_path)
 
-                # col에 대해 각 값이 le.classes_에 속하는지 확인 후 속하지 않으면 unknown으로 처리
-                # 훈련 데이터에 존재하지 않는 새로운 범주값이 valid || test data에 등장하는 경우 "unknown"으로 처리
                 df[col] = df[col].apply(
                     lambda x: x if str(x) in le.classes_ else "unknown"
                 )
 
             # 모든 컬럼이 범주형이라고 가정
-            # str변환: 입력 데이터 표준 형식 표준화 || "unknown" 같은 추가적인 문자열 값 처리 목적
             df[col] = df[col].astype(str)
-            test = le.transform(df[col])   # transform 메서드를 사용해 컬럼 값을 수치형으로 변환
-            df[col] = test   # 변환된 수치형 데이터로 df[col]
+            test = le.transform(df[col])
+            df[col] = test
 
-        # 필요시 다른 scale 적용
-        # scale_col=["userID", "assessmentItemID", "testId", "answerCode", "KnowledgeTag","Dffclt", "Dscrmn", "Gussng"]
-        # scaler=StandardScaler()
-        # df[scale_col]=scaler.fit_transform(df[scale_col])
+        # def convert_time(s: str):
+        #     timestamp = time.mktime(
+        #         datetime.strptime(s, "%Y-%m-%d %H:%M:%S").timetuple()
+        #     )
+        #     return int(timestamp)
 
+        # df["Timestamp"] = df["Timestamp"].apply(convert_time)
         return df
 
     def __feature_engineering(self, df: pd.DataFrame) -> pd.DataFrame:
         # TODO: Fill in if needed
-        # 유저별로 정렬
         df.sort_values(by=['userID', 'Timestamp'], inplace=True)
-        
-        # # 데이터 타입 변경
-        # # ksj) 추가된 feature에 대해서도 타입 변경? 
-        # # 사용할 feature에 대해서만 FE 진행하는 추가 로직 필요
+    
+        # 데이터 타입 변경
         dtype = {
             'userID': 'int16',
             'answerCode': 'int8',
@@ -114,31 +108,31 @@ class Preprocess:
         df['user_acc'] = df['user_correct_answer'] / df['user_total_answer']
         df['user_acc'].fillna(0.75, inplace=True)
 
-        # # userID별 정답률 추가
-        # df['user_sum'] = df.groupby('userID')['answerCode'].transform('sum')
+        # userID별 정답률 추가
+        df['user_sum'] = df.groupby('userID')['answerCode'].transform('sum')
         df['user_mean'] = df.groupby('userID')['answerCode'].transform('mean')
         
         # assessmentItemID별 정답률 추가
-        # df['assessment_sum'] = df.groupby('assessmentItemID')['answerCode'].transform('sum')
+        df['assessment_sum'] = df.groupby('assessmentItemID')['answerCode'].transform('sum')
         df['assessment_mean'] = df.groupby('assessmentItemID')['answerCode'].transform('mean')
         
         # testId별 정답률 추가
-        # df['test_sum'] = df.groupby('testId')['answerCode'].transform('sum')
+        df['test_sum'] = df.groupby('testId')['answerCode'].transform('sum')
         df['test_mean'] = df.groupby('testId')['answerCode'].transform('mean')
         
         # KnowledgeTag별 정답률 추가
-        # df['knowledgeTag_sum'] = df.groupby('KnowledgeTag')['answerCode'].transform('sum')
+        df['knowledgeTag_sum'] = df.groupby('KnowledgeTag')['answerCode'].transform('sum')
         df['knowledgeTag_mean'] = df.groupby('KnowledgeTag')['answerCode'].transform('mean')
         
         # testTag별 정답률 추가
-        # df['testTag_sum'] = df.groupby('testTag')['answerCode'].transform('sum')
-        # df['testTag_mean'] = df.groupby('testTag')['answerCode'].transform('mean')
+        df['testTag_sum'] = df.groupby('testTag')['answerCode'].transform('sum')
+        df['testTag_mean'] = df.groupby('testTag')['answerCode'].transform('mean')
 
         # 상대적 정답률
-        # df['relative_answer_assessment'] = df['answerCode'] - df.groupby('assessmentItemID')['answerCode'].transform('mean')
+        df['relative_answer_assessment'] = df['answerCode'] - df.groupby('assessmentItemID')['answerCode'].transform('mean')
         
         # 유저별 상대적 정답률 평균 - 학습 수준 레벨
-        # df['relative_answer_mean'] = df.groupby('userID')['relative_answer_assessment'].transform('mean')
+        df['relative_answer_mean'] = df.groupby('userID')['relative_answer_assessment'].transform('mean')
 
         # 유저가 문항을 푼 시간
         df['time_to_solve'] = df.groupby(['userID', 'testId'])['Timestamp'].diff().dt.total_seconds().shift(-1)
@@ -151,24 +145,24 @@ class Preprocess:
         df['time_to_solve_mean'] = df.groupby(['userID', 'testId'])['time_to_solve'].transform('mean')
 
         # clip(0, 255)는 메모리를 위해 uint8 데이터 타입을 쓰기 위함
-        # df['prior_assessment_frequency'] = df.groupby(['userID', 'assessmentItemID']).cumcount().clip(0, 255)
+        df['prior_assessment_frequency'] = df.groupby(['userID', 'assessmentItemID']).cumcount().clip(0, 255)
 
         # 각 태그별로 이전에 몇번 풀었는지
-        # df['prior_KnowledgeTag_frequency'] = df.groupby(['userID', 'KnowledgeTag']).cumcount()
+        df['prior_KnowledgeTag_frequency'] = df.groupby(['userID', 'KnowledgeTag']).cumcount()
         
         # 시험지 태그별 학년별 몇번 풀었는지
         df['prior_testTag_frequency'] = df.groupby(['userID', 'testTag']).cumcount()
-        
+    
+    
         return df
 
-   
     def load_data_from_file(self, file_name: str, is_train: bool = True) -> np.ndarray:
         csv_file_path = os.path.join(self.args.data_dir, file_name)
         df = pd.read_csv(csv_file_path)  # , nrows=100000)
         df = self.__feature_engineering(df)
         df = self.__preprocessing(df, is_train)
 
-        # 추후 feature를 embedding할 시에 embedding_layer의 input 크기를 결정할 때 사용
+        # 추후 feature를 embedding할 시에 embedding_layer의 input 크기를 결정할때 사용
 
         self.args.n_questions = len(
             np.load(os.path.join(self.args.asset_dir, "assessmentItemID_classes.npy"))
@@ -181,11 +175,13 @@ class Preprocess:
         )
 
         df = df.sort_values(by=["userID", "Timestamp"], axis=0)
-        columns = ["userID", "assessmentItemID", "testId", "answerCode", "KnowledgeTag",
-                    "Dffclt", "Dscrmn", "Gussng",
-                    "testTag", "user_correct_answer", "user_total_answer", "user_acc", 
-                    "user_mean", "assessment_mean", "test_mean", "knowledgeTag_mean", 
-                    "time_to_solve", "prior_testTag_frequency"]
+        columns = ["userID", "assessmentItemID", "testId", "answerCode", "KnowledgeTag", 
+                    'Dffclt', 'Dscrmn', 'Gussng',
+                    # FE
+                    'testTag', 'user_correct_answer', 'user_acc', 
+                    'assessment_mean', 'test_mean', 'testTag_mean', 
+                    'relative_answer_assessment', 'relative_answer_mean', 
+                    'time_to_solve', 'time_to_solve_mean']
         group = (
             df[columns]
             .groupby("userID")
@@ -198,27 +194,20 @@ class Preprocess:
                     r["Dffclt"].values,
                     r["Dscrmn"].values,
                     r["Gussng"].values,
+                    # FE
                     r["testTag"].values,
                     r["user_correct_answer"].values,
-                    r["user_total_answer"].values,
                     r["user_acc"].values,
-                    r["user_mean"].values,
                     r["assessment_mean"].values,
                     r["test_mean"].values,
-                    r["knowledgeTag_mean"].values,
+                    r["testTag_mean"].values,
+                    r["relative_answer_assessment"].values,
+                    r["relative_answer_mean"].values,
                     r["time_to_solve"].values,
-                    r["prior_testTag_frequency"].values,
+                    r["time_to_solve_mean"].values
                 )
             )
         )
-        """
-        Baseline) 최종 반환 형식(group.values):
-        [
-            ([testId 값들], [assessmentItemID 값들], [KnowledgeTag 값들], [answerCode 값들]),
-            ([testId 값들], [assessmentItemID 값들], [KnowledgeTag 값들], [answerCode 값들]),
-            ...
-        ]
-        """
         return group.values
 
     def load_train_data(self, file_name: str) -> None:
@@ -237,99 +226,177 @@ class DKTDataset(torch.utils.data.Dataset):
         row = self.data[index]
         
         # Load from data
-        test, question, tag, correct, dffclt, dscrmn, gussng, testTag, user_correct_answer, user_total_answer, user_acc, user_mean, assessment_mean, test_mean, knowledgeTag_mean, time_to_solve, prior_testTag_frequency = row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9], row[10], row[11], row[12], row[13], row[14], row[15], row[16]
-        # tensor = torch.tensor(data, dtype=torch.int)
-        # tensor로 변환할 data를 주고 data type지정
-        # 0값을 특별한 용도로 쓰려고 범주형 data 각 요소에 +1 (0 padding)
-        # correct는 정답 여부를 나타내는 binary label 이니까 +1 X
+        test, question, tag, correct, dffclt, dscrmn, gussng, testTag = row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7]
+
         data = {
             "test": torch.tensor(test + 1, dtype=torch.int),
             "question": torch.tensor(question + 1, dtype=torch.int),
             "tag": torch.tensor(tag + 1, dtype=torch.int),
             "correct": torch.tensor(correct, dtype=torch.int),
-            # 범주형 변수가 아니므로 +1 X
-            # padding을 위해 0이 아닌 다른 값을 사용할 수 있음
             "dffclt": torch.tensor(dffclt, dtype=torch.float),
             "dscrmn": torch.tensor(dscrmn, dtype=torch.float),
             "gussng": torch.tensor(gussng, dtype=torch.float),
-            "testTag": torch.tensor(testTag, dtype=torch.int),
-            "user_correct_answer": torch.tensor(user_correct_answer, dtype=torch.float),
-            "user_total_answer": torch.tensor(user_total_answer, dtype=torch.float),
-            "user_acc": torch.tensor(user_acc, dtype=torch.float),
-            "user_mean": torch.tensor(user_mean, dtype=torch.float),
-            "assessment_mean": torch.tensor(assessment_mean, dtype=torch.float),
-            "test_mean": torch.tensor(test_mean, dtype=torch.float),
-            "knowledgeTag_mean": torch.tensor(knowledgeTag_mean, dtype=torch.float),
-            "time_to_solve": torch.tensor(time_to_solve, dtype=torch.float),
-            "prior_testTag_frequency": torch.tensor(prior_testTag_frequency, dtype=torch.float)
+            # FE인데 int라 미리 넣음
+            "testTag": torch.tensor(testTag + 1, dtype=torch.int)
         }
+        # data에 FE 추가
+        FE_list = [
+            'user_correct_answer', 
+            'user_acc',
+            'assessment_mean',
+            'test_mean', 
+            'testTag_mean', 
+            'relative_answer_assessment', 
+            'relative_answer_mean', 
+            'time_to_solve',
+            'time_to_solve_mean'
+        ]
+        for i, name in enumerate(FE_list):
+            data[name] = torch.tensor(row[8+i], dtype=torch.float)
+
 
         # Generate mask: max seq len을 고려하여서 이보다 길면 자르고 아닐 경우 그대로 냅둔다
         seq_len = len(row[0])
+        # past, current df 정의
         if seq_len > self.max_seq_len:
-            for k, seq in data.items():
-                data[k] = seq[-self.max_seq_len:]
-            mask = torch.ones(self.max_seq_len, dtype=torch.int16)
+            past_df = {f"past_{k}": v[-self.max_seq_len-1:-1] for k, v in data.items()} 
+            current_df = {f"current_{k}": v[-self.max_seq_len:] for k, v in data.items()}
         else:
-            for k, seq in data.items():
-                # Pre-padding non-valid sequences
-                tmp = torch.zeros(self.max_seq_len)
-                tmp[self.max_seq_len-seq_len:] = data[k]
-                data[k] = tmp
-            mask = torch.zeros(self.max_seq_len, dtype=torch.int16)
-            mask[-seq_len:] = 1
-        data["mask"] = mask
+            past_df = {f"past_{k}": v[:-1] for k, v in data.items()} 
+            current_df = {f"current_{k}": v for k, v in data.items()} # 전체 데이터
         
-        # Generate interaction
-        """
-        sequence 각 시점에서 이전 시점의 정답 여부를 나타내는 interaction 생성 후
-        padding과 실제 data 부분을 구분하기 위해 마스크 적용
-        --> 시간적 연속성 고려
-        """
-        interaction = data["correct"] + 1  # 패딩을 위해 correct값에 1을 더해준다.
-        interaction = interaction.roll(shifts=1)   # 각 시점 이전 시점의 정답 여부를 나타내기 위헤 roll(tensor에서 shift)
-        interaction_mask = data["mask"].roll(shifts=1)
-        interaction_mask[0] = 0   # 첫 번째 시점 이전은 존재하지 않으므로 0 설정
-        interaction = (interaction * interaction_mask).to(torch.int64)
-        data["interaction"] = interaction
+        # 각 df에 맞는 mask, interaction feature 추가
+        for df in [past_df, current_df]:
+            if(df==past_df):
+                seq_len = len(df['past_test'])
+                if seq_len < self.max_seq_len:   # sequence data 길이가 max보다 작은 경우
+                    for k, seq in df.items():
+                        tmp = torch.zeros(self.max_seq_len)   # max 길이만큼 0 생성
+                        tmp[self.max_seq_len-seq_len:] = df[k]   # sequence data 뒤쪽에 넣음
+                        df[k] = tmp
+                    mask = torch.zeros(self.max_seq_len, dtype=torch.int16)
+                    mask[-seq_len:] = 1
+                else:
+                    mask = torch.ones(self.max_seq_len, dtype=torch.int16)
+                df["past_mask"]=mask    # padding에 대한 mask 추가
+
+                interaction = df["past_correct"] + 1
+                interaction = interaction.roll(shifts=1)
+                interaction_mask = df["past_mask"].roll(shifts=1)
+                interaction_mask[0] = 0
+                interaction = (interaction * interaction_mask).to(torch.int64)
+                df["past_interaction"] = interaction
+            elif(df==current_df):
+                seq_len = len(df['current_test'])
+                if seq_len < self.max_seq_len:   # sequence data 길이가 max보다 작은 경우
+                    for k, seq in data.items():
+                        tmp = torch.zeros(self.max_seq_len)   # max 길이만큼 0 생성
+                        tmp[self.max_seq_len-seq_len:] = df[k]   # sequence data 뒤쪽에 넣음
+                        df[k] = tmp
+                    mask = torch.zeros(self.max_seq_len, dtype=torch.int16)
+                    mask[-seq_len:] = 1
+                else:
+                    mask = torch.ones(self.max_seq_len, dtype=torch.int16)
+                df["current_mask"]=mask    # padding에 대한 mask 추가
+
+                interaction = df["current_correct"] + 1
+                interaction = interaction.roll(shifts=1)
+                interaction_mask = df["current_mask"].roll(shifts=1)
+                interaction_mask[0] = 0
+                interaction = (interaction * interaction_mask).to(torch.int64)
+                df["current_interaction"] = interaction
         
-        # data = {k: v.int() for k, v in data.items()}
-        keys_to_convert = ["test", "question", "tag", "correct", "testTag"]
-        data = {k: v.int() if k in keys_to_convert else v for k, v in data.items()}
+            cat_encoder_list=["test", "question", "tag", "testTag"]
+            num_encoder_list=["dffclt", "dscrmn", "gussng", 
+                            "assessment_mean", "test_mean", "testTag_mean", 
+                            "relative_answer_assessment"]
 
-        """
-        .int()?
-        torch.tensor 변환 과정 등 data type이 변할 수 있음
-        .int()로 data type 일관성 보장 + Embedding layer input
-        """
+            cat_decoder_list=["interaction","testTag"]
+            num_decoder_list=["time_to_solve", "time_to_solve_mean", 
+                            "user_acc", "user_correct_answer", "testTag_mean",
+                            "relative_answer_mean", 'user_total_answer']
 
-        """
-        최종 반환 data:
-        data = {
-                "test": torch.tensor(test + 1, dtype=torch.int),
-                "question": torch.tensor(question + 1, dtype=torch.int),
-                "tag": torch.tensor(tag + 1, dtype=torch.int),
-                "correct": torch.tensor(correct, dtype=torch.int),
-                "dffclt": torch.tensor(dffclt, dtype=torch.float),
-                "dscrmn": torch.tensor(dscrmn, dtype=torch.float),
-                "gussng": torch.tensor(gussng, dtype=torch.float),
-                "testTag": torch.tensor(testTag + 1, dtype=torch.int),
-                "user_correct_answer": torch.tensor(user_correct_answer, dtype=torch.float),
-                "user_total_answer": torch.tensor(user_total_answer, dtype=torch.float),
-                "user_acc": torch.tensor(user_acc, dtype=torch.float),
-                "user_mean": torch.tensor(user_mean, dtype=torch.float),
-                "assessment_mean": torch.tensor(assessment_mean, dtype=torch.float),
-                "test_mean": torch.tensor(test_mean, dtype=torch.float),
-                "knowledgeTag_mean": torch.tensor(knowledgeTag_mean, dtype=torch.float),
-                "time_to_solve": torch.tensor(time_to_solve, dtype=torch.float),
-                "prior_testTag_frequency": torch.tensor(prior_testTag_frequency, dtype=torch.float),
-                "mask": torch.tensor(mask, dtype=torch.int16)
-                "interaction": torch.tensor(interaction, dtype=torch.int64)
+            past_cat_en_list={k:v for k,v in past_df.items() if k in cat_encoder_list}
+            past_num_en_list={k:v for k,v in past_df.items() if k in num_encoder_list}
+
+            past_cat_de_list={k:v for k,v in past_df.items() if k in cat_decoder_list}
+            past_num_de_list={k:v for k,v in past_df.items() if k in num_decoder_list}
+
+            current_cat_en_list={k:v for k,v in current_df.items() if k in cat_encoder_list}
+            current_num_en_list={k:v for k,v in current_df.items() if k in num_encoder_list}
+
+            current_cat_de_list={k:v for k,v in current_df.items() if k in cat_decoder_list}
+            current_num_de_list={k:v for k,v in current_df.items() if k in num_decoder_list}
+
+            past_encoder_feat={
+                "past_cat_en_list": past_cat_en_list,
+                "past_num_en_list": past_num_en_list
             }
-        
-        """
-        return data
+            past_decoder_feat={
+                "past_cat_de_list": past_cat_de_list,
+                "past_num_de_list": past_num_de_list
+            }
+            current_encoder_feat={
+                "current_cat_en_list": current_cat_en_list,
+                "current_num_en_list": current_num_en_list
+            }
+            current_decoder_feat={
+                "current_cat_de_list": current_cat_de_list,
+                "current_num_de_list": current_num_de_list
+            }
 
+            return {
+                "past_encoder_feat": past_encoder_feat,
+                "past_decoder_feat": past_decoder_feat,
+                "current_encoder_feat": current_encoder_feat,
+                "current_decoder_feat": current_decoder_feat,
+                "correct": torch.tensor(correct, dtype=torch.int)
+                }
+            """
+            return 형식 = {
+                "past_encoder_feat": {
+                    "past_cat_en_list": {
+                        "encoder에 들어갈 Feature": past data,
+                        ...
+                    },
+                    "past_num_en_list": {
+                        "encoder에 들어갈 Feature": past data,
+                        ...
+                    }
+                },
+                "past_decoder_feat": {
+                    "past_cat_de_list": {
+                        "decoder에 들어갈 Feature": past data,
+                        ...
+                    },
+                    "past_num_de_list": {
+                        "decoder에 들어갈 Feature": past data,
+                        ...
+                    }
+                },
+                "current_encoder_feat": {
+                    "current_cat_en_list": {
+                        "encoder에 들어갈 Feature": current data,
+                        ...
+                    },
+                    "current_num_en_list": {
+                        "encoder에 들어갈 Feature": current data,
+                        ...
+                    }
+                },
+                "current_decoder_feat": {
+                    "current_cat_de_list": {
+                        "decoder에 들어갈 Feature": current data,
+                        ...
+                    },
+                    "current_num_de_list": {
+                        "decoder에 들어갈 Feature": current data,
+                        ...
+                    }
+                }
+                "correct": torch.tensor(correct, dtype=torch.int)
+            }
+            """
     def __len__(self) -> int:
         return len(self.data)
 
