@@ -60,12 +60,13 @@ def run(
         
         # VALID
         auc, acc = validate(valid_data=valid_data, model=model)
+        '''
         wandb.log(dict(train_loss_epoch=train_loss,
                        train_acc_epoch=train_acc,
                        train_auc_epoch=train_auc,
                        valid_acc_epoch=acc,
                        valid_auc_epoch=auc))
-
+        '''
         if auc > best_auc:
             logger.info("Best model updated AUC from %.4f to %.4f", best_auc, auc)
             best_auc, best_epoch = auc, e
@@ -83,9 +84,11 @@ def run(
 
 def train(model: nn.Module, train_data: dict, optimizer: torch.optim.Optimizer):
     model.train()
-    pred = model(train_data["edge"])
+    pred = model(train_data["edge_user_item"],train_data["edge_user_test"],train_data["edge_user_know"])
+    print(pred)
+    exit()
     loss = model.link_pred_loss(pred=pred, edge_label=train_data["label"])
-    
+   
     prob = model.predict_link(edge_index=train_data["edge"], prob=True)
     prob = prob.detach().cpu().numpy()
 

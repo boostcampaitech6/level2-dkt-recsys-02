@@ -14,8 +14,8 @@ logger = get_logger(logging_conf)
 
 
 def main(args: argparse.Namespace):
-    wandb.login()
-    wandb.init(project="dkt", config=vars(args))
+    #wandb.login()
+    #wandb.init(project="dkt", config=vars(args))
     set_seeds(args.seed)
     
     use_cuda: bool = torch.cuda.is_available() and args.use_cuda_if_available
@@ -23,18 +23,18 @@ def main(args: argparse.Namespace):
 
     logger.info("Preparing data ...")
     logger.info(device)
-    train_data, valid_data, test_data, n_node = prepare_dataset(device=device, data_dir=args.data_dir, return_origin_train=True)
-    wandb.run.name = get_expname(args)
-    wandb.run.save()
+    train_data, valid_data, test_data, n_node, type_length = prepare_dataset(device=device, data_dir=args.data_dir, return_origin_train=True)
+    #wandb.run.name = get_expname(args)
+    #wandb.run.save()
     logger.info("Building Model ...")
     model = trainer.build(
         n_node=n_node,
         embedding_dim=args.hidden_dim,
         num_layers=args.n_layers,
         alpha=args.alpha,
+        type_length = type_length
     )
     model = model.to(device)
-    
     logger.info("Start Training ...")
     trainer.run(
         model=model,
@@ -45,7 +45,7 @@ def main(args: argparse.Namespace):
         model_dir=args.model_dir,
         patience = args.patience
     )
-    wandb.finish()
+    #wandb.finish()
 
 
 if __name__ == "__main__":
