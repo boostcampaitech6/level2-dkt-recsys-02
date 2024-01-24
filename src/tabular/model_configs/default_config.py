@@ -44,17 +44,15 @@ cat_cols = [
 
 # LightGBM default parameters
 lightGBMParams={
-    'learning_rate':0.1,
-    'num_boost_round':500,
+    'learning_rate':0.001,
+    'n_estimators':500,
     'max_depth':10,
     'num_leaves': 50,
-    'lambda_l1': 0,
-    'lambda_l2': 0,
-    'colsample_bytree':0.7,
+    'reg_alpha': 0,
+    'reg_lambda': 0,
     'objective':'binary',
-    'metric':'acc',
-    'early_stopping_rounds':10,
-    'verbosity':1
+    'metric': ['acc', 'auc'],
+    'is_unblanced': True
 }
 
 # XGBoost default parameters
@@ -66,9 +64,9 @@ xgboostParams = {
     'colsample_bytree': 0.8,         # 각 트리마다 사용되는 특성의 비율
     'min_child_weight': 1,           # 리프 노드의 최소 가중치 합
     'gamma': 0.1,                    # 리프 노드의 가중치를 더할지 결정하는 파라미터
-    'lambda': 1,                     # L2 정규화(규제) 파라미터
+    'lambda': 0,                     # L2 정규화(규제) 파라미터
     'alpha': 0,                      # L1 정규화(규제) 파라미터
-    'scale_pos_weight': 1,           # 데이터 클래스(레이블) 불균형 조절을 위한 가중치
+    'scale_pos_weight': 0.5,           # 데이터 클래스(레이블) 불균형 조절을 위한 가중치
     'n_estimators': 30,             # 훈련 수
     'seed': 42,
 }

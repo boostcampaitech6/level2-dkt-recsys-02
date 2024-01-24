@@ -4,10 +4,11 @@
     "metric": {"goal": "maximize", "name": "Overall_Val_Acc"},
     "parameters": {
         "max_depth": {"min": 5, "max": 100},
-        "boosting": {"values": ["gbdt", "dart"]},
         "num_leaves": {"min": 10, "max": 100},
-        "learning_rate": {"min": 0.001, "max": 0.01},
-        "colsample_bytree": {"min": 0.1, "max": 0.9},
-        "num_boost_round": {"min": 10, "max":200}
+        "learning_rate": {"min": 0.0001, "max": 0.01},
+        "reg_alpha": {"min": 0.001, "max": 0.1},
+        "reg_lambda": {"min": 0.001, "max": 0.9},
+        "n_estimators": {"min": 30, "max":1000},
+        "early_stopping_rounds": {"values": [5, 7, 10, 30]}
     }
 }

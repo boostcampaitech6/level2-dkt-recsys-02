@@ -5,6 +5,7 @@ import numpy as np
 import lightgbm as lgb
 import matplotlib.pyplot as plt
 from wandb.lightgbm import wandb_callback, log_summary
+from lightgbm import early_stopping
 from wandb.xgboost import WandbCallback
 from xgboost import XGBClassifier
 from catboost import CatBoostClassifier, Pool
@@ -20,14 +21,14 @@ class LightGBMModel:
         self.params = lightGBMParams
 
     def setting(self):
-        self.params['boosting'] = self.config['boosting']
         self.params['max_depth'] = self.config['max_depth']
         self.params['learning_rate'] = self.config['learning_rate']
         self.params['num_leaves'] = self.config['num_leaves']
-        self.params['colsample_bytree'] = self.config['colsample_bytree']
-        self.params['num_boost_round'] = self.config['num_boost_round']
+        self.params['n_estimators'] = self.config['n_estimators']
+        self.params['reg_alpha'] = self.config['reg_alpha']
+        self.params['reg_lambda'] = self.config['reg_lambda']
         return self.params
-        
+
     def fit(self, x_train, y_train, x_valid, y_valid):
         params = self.setting()
         lgb_train = lgb.Dataset(x_train, y_train)
@@ -36,7 +37,7 @@ class LightGBMModel:
             params,
             train_set=lgb_train,
             valid_sets=[lgb_train, lgb_valid],
-            callbacks=[wandb_callback()]
+            callbacks=[wandb_callback(), early_stopping(self.config['early_stopping_rounds'])]
         )
         log_summary(self.model, save_model_checkpoint=True)
 
@@ -45,6 +46,7 @@ class LightGBMModel:
             return self.model.predict(x_test)
         else:
             raise ValueError("Model has not been trained. Please call fit() first.")
+
 
 class XGBoostModel:
     def __init__(self, config):
