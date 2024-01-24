@@ -30,6 +30,7 @@ FEATS = [
     'time_to_solve_mean',
     #  'prior_assessment_frequency',
     #  'prior_KnowledgeTag_frequency',
+    'assessmentItemID_time_level',
     'prior_testTag_frequency'
  ]
 
