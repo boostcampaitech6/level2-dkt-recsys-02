@@ -87,6 +87,17 @@ class LightGCN(torch.nn.Module):
             alpha = torch.tensor([alpha] * (num_layers + 1))
         self.register_buffer('alpha', alpha)
 
+        ## linear for attn
+        self.src_q_converter = torch.nn.Linear(self.embedding_dim, self.embedding_dim//2) 
+        self.src_k_converter = torch.nn.Linear(self.embedding_dim, self.embedding_dim//2) ##dimesion reduce for generalization .
+        self.src_v_converter = torch.nn.Linear(self.embedding_dim, self.embedding_dim)
+        self.src_mtn_calculator = torch.nn.MultiheadAttention(self.embedding_dim, 2)
+        
+        self.dst_q_converter = torch.nn.Linear(self.embedding_dim, self.embedding_dim//2)
+        self.dst_k_converter = torch.nn.Linear(self.embedding_dim, self.embedding_dim//2) ##dimesion reduce for generalization .
+        self.dst_v_converter = torch.nn.Linear(self.embedding_dim, self.embedding_dim)
+        self.dst_mtn_calculator = torch.nn.MultiheadAttention(self.embedding_dim, 2)
+        
         self.user_item_embedding = Embedding(self.type_length["user"]+self.type_length["item"], embedding_dim)
         self.user_test_embedding = Embedding(self.type_length["user"]+self.type_length["test"], embedding_dim)
         self.user_tag_embedding = Embedding(self.type_length["user"]+self.type_length["tag"], embedding_dim)
@@ -180,12 +191,27 @@ class LightGCN(torch.nn.Module):
         user_tag_out_dst = out['user_tag_out'][user_tag_edge_label_index[1]]
         
         if self.agrregation_method == 0: #sum
-            result_src = user_item_out_src + user_test_out_src + user_tag_out_src
-            result_dst = user_item_out_dst + user_test_out_dst + user_tag_out_dst
+            result_src = user_item_out_src + user_test_out_src + user_tag_out_src #user embdings (batch, # of edge, hd)
+            result_dst = user_item_out_dst + user_test_out_dst + user_tag_out_dst # item, test, tag embdings (batch, # of edge, hd)
             result_src *= (1/3)
             result_dst *= (1/3)
         elif self.agrregation_method == 1:
-            pass
+            stacked_src = torch.stack((user_item_out_src, user_test_out_src, user_tag_out_src),dim=0)
+            stacked_dst = torch.stack((user_item_out_dst, user_test_out_dst, user_tag_out_dst),dim=0)
+            
+            src_q = self.src_q_converter(stacked_src)
+            src_k = self.src_k_converter(stacked_src)
+            src_v = self.src_v_converter(stacked_src)
+            
+            dst_q = self.dst_q_converter(stacked_dst)
+            dst_k = self.dst_k_converter(stacked_dst)
+            dst_v = self.dst_v_converter(stacked_dst)
+            
+            src_mtn, _ = self.src_mtn_calculator(src_q, src_k, src_v)
+            dst_mtn, _ = self.dst_mtn_calculator(dst_q, dst_k, dst_v)
+            
+            result_src = src_mtn
+            result_src = dst_mtn
         else:
             raise("no_aggregation_method")
         

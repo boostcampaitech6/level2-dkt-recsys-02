@@ -33,7 +33,7 @@ def main(args: argparse.Namespace):
         num_layers=args.n_layers,
         alpha=args.alpha,
         type_length = type_length,
-        agrregation_method = 0 # sum
+        agrregation_method = args.agreegation_method # sum
     )
     model = model.to(device)
     logger.info("Start Training ...")
