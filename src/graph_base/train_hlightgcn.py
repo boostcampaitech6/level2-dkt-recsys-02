@@ -19,7 +19,7 @@ def main(args: argparse.Namespace):
     set_seeds(args.seed)
     
     use_cuda: bool = torch.cuda.is_available() and args.use_cuda_if_available
-    device = torch.device("cuda" if use_cuda else "cpu")
+    device = torch.device("cuda:1" if use_cuda else "cpu")
 
     logger.info("Preparing data ...")
     logger.info(device)

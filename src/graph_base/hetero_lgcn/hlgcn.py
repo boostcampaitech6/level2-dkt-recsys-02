@@ -88,15 +88,15 @@ class LightGCN(torch.nn.Module):
         self.register_buffer('alpha', alpha)
 
         ## linear for attn
-        self.src_q_converter = torch.nn.Linear(self.embedding_dim, self.embedding_dim//2) 
-        self.src_k_converter = torch.nn.Linear(self.embedding_dim, self.embedding_dim//2) ##dimesion reduce for generalization .
+        self.src_q_converter = torch.nn.Linear(self.embedding_dim, self.embedding_dim) 
+        self.src_k_converter = torch.nn.Linear(self.embedding_dim, self.embedding_dim) ##dimesion reduce for generalization .
         self.src_v_converter = torch.nn.Linear(self.embedding_dim, self.embedding_dim)
-        self.src_mtn_calculator = torch.nn.MultiheadAttention(self.embedding_dim, 2)
+        self.src_mtn_calculator = torch.nn.MultiheadAttention(self.embedding_dim, 1)
         
-        self.dst_q_converter = torch.nn.Linear(self.embedding_dim, self.embedding_dim//2)
-        self.dst_k_converter = torch.nn.Linear(self.embedding_dim, self.embedding_dim//2) ##dimesion reduce for generalization .
+        self.dst_q_converter = torch.nn.Linear(self.embedding_dim, self.embedding_dim)
+        self.dst_k_converter = torch.nn.Linear(self.embedding_dim, self.embedding_dim) ##dimesion reduce for generalization .
         self.dst_v_converter = torch.nn.Linear(self.embedding_dim, self.embedding_dim)
-        self.dst_mtn_calculator = torch.nn.MultiheadAttention(self.embedding_dim, 2)
+        self.dst_mtn_calculator = torch.nn.MultiheadAttention(self.embedding_dim, 1)
         
         self.user_item_embedding = Embedding(self.type_length["user"]+self.type_length["item"], embedding_dim)
         self.user_test_embedding = Embedding(self.type_length["user"]+self.type_length["test"], embedding_dim)
@@ -202,7 +202,6 @@ class LightGCN(torch.nn.Module):
             src_q = self.src_q_converter(stacked_src)
             src_k = self.src_k_converter(stacked_src)
             src_v = self.src_v_converter(stacked_src)
-            
             dst_q = self.dst_q_converter(stacked_dst)
             dst_k = self.dst_k_converter(stacked_dst)
             dst_v = self.dst_v_converter(stacked_dst)
@@ -210,8 +209,8 @@ class LightGCN(torch.nn.Module):
             src_mtn, _ = self.src_mtn_calculator(src_q, src_k, src_v)
             dst_mtn, _ = self.dst_mtn_calculator(dst_q, dst_k, dst_v)
             
-            result_src = src_mtn
-            result_src = dst_mtn
+            result_src = torch.sum(src_mtn,dim=0)
+            result_dst = torch.sum(dst_mtn,dim=0)
         else:
             raise("no_aggregation_method")
         
