@@ -32,13 +32,15 @@ def main(args: argparse.Namespace):
         embedding_dim=args.hidden_dim,
         num_layers=args.n_layers,
         alpha=args.alpha,
-        type_length = type_length
+        type_length = type_length,
+        agrregation_method = 0 # sum
     )
     model = model.to(device)
     logger.info("Start Training ...")
     trainer.run(
         model=model,
         train_data=train_data,
+        test_data =test_data,
         valid_data=valid_data,
         n_epochs=args.n_epochs,
         learning_rate=args.lr,

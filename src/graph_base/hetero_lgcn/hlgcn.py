@@ -66,12 +66,14 @@ class LightGCN(torch.nn.Module):
         num_nodes: int,
         embedding_dim: int,
         num_layers: int,
+        agrregation_method : int, # 0 = sum, 1 = attention
         type_length: dict, # / user:n_user / item:n_item / test:n_test / tag:n_tag /
         alpha: Optional[Union[float, Tensor]] = None,
+        
         **kwargs,
     ):
         super().__init__()
-
+        self.agrregation_method = agrregation_method
         self.num_nodes = num_nodes
         self.embedding_dim = embedding_dim
         self.num_layers = num_layers
@@ -177,11 +179,15 @@ class LightGCN(torch.nn.Module):
         user_tag_out_src = out['user_tag_out'][user_tag_edge_label_index[0]]
         user_tag_out_dst = out['user_tag_out'][user_tag_edge_label_index[1]]
         
-        
-        result_src = user_item_out_src + user_test_out_src + user_tag_out_src
-        result_dst = user_item_out_dst + user_test_out_dst + user_tag_out_dst
-        result_src *= (1/3)
-        result_dst *= (1/3)
+        if self.agrregation_method == 0: #sum
+            result_src = user_item_out_src + user_test_out_src + user_tag_out_src
+            result_dst = user_item_out_dst + user_test_out_dst + user_tag_out_dst
+            result_src *= (1/3)
+            result_dst *= (1/3)
+        elif self.agrregation_method == 1:
+            pass
+        else:
+            raise("no_aggregation_method")
         
         '''
         out_ele_user_item = user_item_out_src*user_item_out_dst

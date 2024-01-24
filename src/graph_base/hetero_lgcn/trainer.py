@@ -9,7 +9,7 @@ from .hlgcn import LightGCN
 import wandb
 from .utils import dropout_edge
 from hetero_lgcn.utils import get_logger, logging_conf
-
+from torch.optim.lr_scheduler import StepLR 
 
 logger = get_logger(logger_conf=logging_conf)
 
@@ -31,6 +31,7 @@ def build(n_node: int, weight: str = None, **kwargs):
 def run(
     model: nn.Module,
     train_data: dict,
+    test_data:dict,
     valid_data: dict = None,
     n_epochs: int = 100,
     learning_rate: float = 0.01,
@@ -40,7 +41,7 @@ def run(
     
 
     optimizer = torch.optim.Adam(params=model.parameters(), lr=learning_rate)
-
+    scheduler = StepLR(optimizer, step_size=30, gamma=0.1)
     os.makedirs(name=model_dir, exist_ok=True)
 
     if valid_data is None:
@@ -56,9 +57,8 @@ def run(
     for e in range(n_epochs):
         logger.info("Epoch: %s", e)
         # TRAIN
-        print(train_data)
-        exit()
-        train_auc, train_acc, train_loss = train(train_data=train_data, model=model, optimizer=optimizer)
+        train_data_droped = dropout_edge(train_data)
+        train_auc, train_acc, train_loss = train(train_data=train_data_droped, model=model, optimizer=optimizer)
         
         # VALID
         auc, acc = validate(valid_data=valid_data, model=model)
@@ -79,10 +79,11 @@ def run(
             early_stopping_counter += 1
             if early_stopping_counter >= patience:
                 break
+        scheduler.step()
     torch.save(obj={"model": model.state_dict(), "epoch": e + 1},
                f=os.path.join(model_dir, f"last_model.pt"))
     logger.info(f"Best Weight Confirmed : {best_epoch+1}'th epoch")
-
+    inference(model,test_data,"/home/minseo/Naver_Ai/level2-dkt-recsys-02/src/graph_base/outputs")
 
 def train(model: nn.Module, train_data: dict, optimizer: torch.optim.Optimizer):
     model.train()
@@ -94,7 +95,7 @@ def train(model: nn.Module, train_data: dict, optimizer: torch.optim.Optimizer):
     label = train_data["label"].cpu().numpy()
     acc = accuracy_score(y_true=label, y_pred=prob > 0.5)
     auc = roc_auc_score(y_true=label, y_score=prob)
-
+    
     # backward
     optimizer.zero_grad()
     loss.backward()
@@ -120,11 +121,11 @@ def validate(valid_data: dict, model: nn.Module):
 def inference(model: nn.Module, data: dict, output_dir: str):
     model.eval()
     with torch.no_grad():
-        pred = model.predict_link(edge_index=data["edge"], prob=True)
+        pred = model.predict_link(data["edge_user_item"],data["edge_user_test"],data["edge_user_know"], prob=True)
         
     logger.info("Saving Result ...")
     pred = pred.detach().cpu().numpy()
     os.makedirs(name=output_dir, exist_ok=True)
-    write_path = os.path.join(output_dir, "submission.csv")
+    write_path = os.path.join(output_dir, "submission_TT_justlike_TT.csv")
     pd.DataFrame({"prediction": pred}).to_csv(path_or_buf=write_path, index_label="id")
     logger.info("Successfully saved submission as %s", write_path)
