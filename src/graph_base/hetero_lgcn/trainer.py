@@ -85,11 +85,8 @@ def run(
 def train(model: nn.Module, train_data: dict, optimizer: torch.optim.Optimizer):
     model.train()
     pred = model(train_data["edge_user_item"],train_data["edge_user_test"],train_data["edge_user_know"])
-    print(pred)
-    exit()
     loss = model.link_pred_loss(pred=pred, edge_label=train_data["label"])
-   
-    prob = model.predict_link(edge_index=train_data["edge"], prob=True)
+    prob = model.predict_link(train_data["edge_user_item"],train_data["edge_user_test"],train_data["edge_user_know"], prob=True)
     prob = prob.detach().cpu().numpy()
 
     label = train_data["label"].cpu().numpy()
@@ -108,7 +105,7 @@ def train(model: nn.Module, train_data: dict, optimizer: torch.optim.Optimizer):
 def validate(valid_data: dict, model: nn.Module):
     model.eval()
     with torch.no_grad():
-        prob = model.predict_link(edge_index=valid_data["edge"], prob=True)
+        prob = model.predict_link(valid_data["edge_user_item"],valid_data["edge_user_test"],valid_data["edge_user_know"], prob=True)
         prob = prob.detach().cpu().numpy()
         
         label = valid_data["label"].cpu()

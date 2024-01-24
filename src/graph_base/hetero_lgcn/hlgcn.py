@@ -132,7 +132,7 @@ class LightGCN(torch.nn.Module):
             user_test_x = self.user_test_convs[i](user_test_x, user_test_edge_index, edge_weight)
             user_test_out = user_test_out + user_test_x * self.alpha[i + 1]     
         
-        return user_item_out, user_tag_out, user_test_out
+        return {"user_item_out": user_item_out, "user_tag_out": user_tag_out, "user_test_out": user_test_out}
 
     def forward(
         self,
@@ -166,18 +166,16 @@ class LightGCN(torch.nn.Module):
                 user_test_edge_label_index = user_test_edge_index
                 user_tag_edge_label_index = user_tag_edge_index
 
-        user_item_out, user_tag_out, user_test_out = self.get_embedding(user_item_edge_index, user_test_edge_index, user_tag_edge_index, edge_weight)
+        out = self.get_embedding(user_item_edge_index, user_test_edge_index, user_tag_edge_index, edge_weight)
         
-        print(user_item_out)
-        exit()
-        user_item_out_src = out[user_item_edge_label_index[0]]
-        user_item_out_dst = out[user_item_edge_label_index[1]]
+        user_item_out_src = out['user_item_out'][user_item_edge_label_index[0]]
+        user_item_out_dst = out['user_item_out'][user_item_edge_label_index[1]]
         
-        user_test_out_src = out[user_test_edge_label_index[0]]
-        user_test_out_dst = out[user_test_edge_label_index[1]]
+        user_test_out_src = out['user_test_out'][user_test_edge_label_index[0]]
+        user_test_out_dst = out['user_test_out'][user_test_edge_label_index[1]]
 
-        user_tag_out_src = out[user_tag_edge_label_index[0]]
-        user_tag_out_dst = out[user_tag_edge_label_index[1]]
+        user_tag_out_src = out['user_tag_out'][user_tag_edge_label_index[0]]
+        user_tag_out_dst = out['user_tag_out'][user_tag_edge_label_index[1]]
         
         out_ele_user_item = user_item_out_src*user_item_out_dst
         out_ele_user_item = out_ele_user_item.sum(dim=-1)
@@ -185,7 +183,7 @@ class LightGCN(torch.nn.Module):
         out_ele_user_test = out_ele_user_test.sum(dim=-1)
         out_ele_user_tag = user_tag_out_src*user_tag_out_dst
         out_ele_user_tag = out_ele_user_tag.sum(dim=-1)
-        return (out_ele_user_item+out_ele_user_test+out_ele_user_tag)//3
+        return (out_ele_user_item+out_ele_user_test+out_ele_user_tag)/3
 
     def predict_link(
         self,
