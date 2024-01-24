@@ -132,9 +132,18 @@ class Preprocess:
         # 결측치 이전 행의 값으로 채움
         df['time_to_solve'].fillna(method='ffill', inplace=True)
 
+        # 추가 이상치 처리
+        df.loc[df['time_to_solve'] >= 1000, 'time_to_solve'] = 1000
+
         # 유저별 문항 시간 평균
         #df['time_to_solve_mean'] = df.groupby('userID')['time_to_solve'].transform('mean')
         df['time_to_solve_mean'] = df.groupby(['userID', 'testId'])['time_to_solve'].transform('mean')
+
+        # 문항당 문제를 푸는 평균시간
+        df['assessmentItemID_time_to_solve_mean'] = df.groupby('assessmentItemID')['time_to_solve'].transform('mean')
+
+        # 유저의 문제 푸는 시간 이용하여, 레벨 처리 
+        df['assessmentItemID_time_level'] = df['assessmentItemID_time_to_solve_mean'] - df['time_to_solve']
 
         # clip(0, 255)는 메모리를 위해 uint8 데이터 타입을 쓰기 위함
         df['prior_assessment_frequency'] = df.groupby(['userID', 'assessmentItemID']).cumcount().clip(0, 255)
