@@ -1,7 +1,7 @@
 {
     "name": "xgb-sweep",
     "method": "bayes",
-    "metric": {"goal": "maximize", "name": "auc"},
+    "metric": {"goal": "maximize", "name": "Overall_Val_Acc"},
     "parameters": {
         "max_depth": {"min": 1, "max": 10},
         "eta": {"min": 0.01, "max": 0.2},
