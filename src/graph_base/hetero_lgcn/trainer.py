@@ -7,8 +7,8 @@ import torch
 from torch import nn
 from .hlgcn import LightGCN
 import wandb
-
-from lightgcn.utils import get_logger, logging_conf
+from .utils import dropout_edge
+from hetero_lgcn.utils import get_logger, logging_conf
 
 
 logger = get_logger(logger_conf=logging_conf)
@@ -56,6 +56,8 @@ def run(
     for e in range(n_epochs):
         logger.info("Epoch: %s", e)
         # TRAIN
+        print(train_data)
+        exit()
         train_auc, train_acc, train_loss = train(train_data=train_data, model=model, optimizer=optimizer)
         
         # VALID
@@ -98,7 +100,7 @@ def train(model: nn.Module, train_data: dict, optimizer: torch.optim.Optimizer):
     loss.backward()
     optimizer.step()
     
-    logger.info("TRAIN AUC : %.4f ACC : %.4f LOSS : %.4f", auc, acc, loss.item())
+    #logger.info("TRAIN AUC : %.4f ACC : %.4f LOSS : %.4f", auc, acc, loss.item())
     return auc, acc, loss
 
 

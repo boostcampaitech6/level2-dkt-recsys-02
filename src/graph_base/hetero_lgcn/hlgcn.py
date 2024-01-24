@@ -177,13 +177,21 @@ class LightGCN(torch.nn.Module):
         user_tag_out_src = out['user_tag_out'][user_tag_edge_label_index[0]]
         user_tag_out_dst = out['user_tag_out'][user_tag_edge_label_index[1]]
         
+        
+        result_src = user_item_out_src + user_test_out_src + user_tag_out_src
+        result_dst = user_item_out_dst + user_test_out_dst + user_tag_out_dst
+        result_src *= (1/3)
+        result_dst *= (1/3)
+        
+        '''
         out_ele_user_item = user_item_out_src*user_item_out_dst
         out_ele_user_item = out_ele_user_item.sum(dim=-1)
         out_ele_user_test = user_test_out_src*user_test_out_dst
         out_ele_user_test = out_ele_user_test.sum(dim=-1)
         out_ele_user_tag = user_tag_out_src*user_tag_out_dst
         out_ele_user_tag = out_ele_user_tag.sum(dim=-1)
-        return (out_ele_user_item+out_ele_user_test+out_ele_user_tag)/3
+        '''
+        return (result_src*result_dst).sum(dim=-1)
 
     def predict_link(
         self,

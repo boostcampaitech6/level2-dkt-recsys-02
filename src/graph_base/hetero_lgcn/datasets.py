@@ -10,7 +10,7 @@ from lightgcn.utils import get_logger, logging_conf
 logger = get_logger(logging_conf)
 
 
-def prepare_dataset(device: str, data_dir: str, return_origin_train:bool = False) -> Tuple[dict, dict, int]:
+def prepare_dataset(device: str, data_dir: str, return_origin_train:bool = True) -> Tuple[dict, dict, int]:
     data = load_data(data_dir=data_dir)
     train_data, test_data = separate_data(data=data)
     id2index, type_length = indexing_data(data=data)

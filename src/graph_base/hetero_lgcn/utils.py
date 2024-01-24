@@ -66,3 +66,32 @@ def get_expname(args):
     save_time = now_date + '_' + now_hour.replace(':', '')
     expname = save_time + '_' + args.model
     return expname
+
+
+def dropout_edge(train_data:dict,
+                p: float = 0.5, # #of drop edge percentage
+                ):
+
+    if p < 0. or p > 1.:
+        raise ValueError(f'숫자 똑띠 안넣나 0~1이다 ~ 만약에, 네부캠 7기 이후 사람이 이 글을 본다면, 뒤로가기 하세요 실력 안늘어요 ㅎㅎ;'
+                        f'(이거 넣으면 없는 엣지도 드랍 할려고 으휴 ..? {p}')
+        
+    user_problem_edge_index = train_data['edge_user_item']
+    user_problem_label = train_data['label']
+    user_test_edge_index = train_data['edge_user_test']
+    user_tag_edge_index = train_data['edge_user_know']
+    
+    
+    up_row, _ = user_problem_edge_index.shape
+    ute_row, _ = user_test_edge_index.shape
+    uta_row, _ = user_tag_edge_index.shape
+
+    edge_mask_up = torch.rand(up_row.size(0), device=user_problem_edge_index.device) >= p
+    edge_mask_ute = torch.rand(ute_row.size(0), device=user_test_edge_index.device) >= p
+    edge_mask_uta = torch.rand(uta_row.size(0), device=user_tag_edge_index.device) >= p
+
+    user_problem_edge_index = user_problem_edge_index[:, edge_mask_up]
+    user_test_edge_index = user_test_edge_index[:, edge_mask_ute]
+    user_tag_edge_index = user_tag_edge_index[:, edge_mask_uta]
+    user_problem_label = user_problem_label[:,edge_mask_up] 
+    return {'edge_user_item' : user_problem_edge_index, 'label' : user_problem_label, }
