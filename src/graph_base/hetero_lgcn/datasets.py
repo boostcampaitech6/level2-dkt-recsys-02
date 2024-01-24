@@ -23,9 +23,9 @@ def prepare_dataset(device: str, data_dir: str, return_origin_train:bool = False
     print_data_stat(val_data,"val")
     print_data_stat(test_data, "Test")
     if return_origin_train:
-        return origin_train_data, val_data_proc ,test_data_proc, len(id2index), id2index
+        return origin_train_data, val_data_proc ,test_data_proc, len(id2index) 
     else:
-        return train_data_proc, val_data_proc ,test_data_proc, len(id2index), id2index
+        return train_data_proc, val_data_proc ,test_data_proc, len(id2index)
 
 
 def load_data(data_dir: str) -> pd.DataFrame: 
