@@ -1,5 +1,5 @@
 ![header](https://capsule-render.vercel.app/api?type=waving&color=gradient&height=250&section=header&text=Level2-DeepKnowledgeTracing&desc=RecSys-02&fontSize=50&fontColor=FFFFFF&fontAlignY=40)
-- [랩업 레포트]()
+- [랩업 레포트](https://github.com/boostcampaitech6/level2-dkt-recsys-02/blob/main/docs/DKT_RecSys_02_WarpUP_report.pdf)
 - [최종 발표 자료](https://github.com/boostcampaitech6/level2-dkt-recsys-02/blob/main/docs/Recsys02-level2-DKT.pptx.pdf)
 # 프로젝트 개요
 **유저의 학습 상태에 대해 새로운 문제를 풀 가능성을 예측하는 Task**<br>
