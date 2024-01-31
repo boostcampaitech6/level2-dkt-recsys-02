@@ -552,7 +552,7 @@ class Saint(ModelBase):
             drop_out: float = 0.1,
             max_seq_len: float = 20,
             n_conti_features: int = 13, ### 추가한 feature 개수
-            Tfixup: bool = True,
+            T_fixup: bool = False,
             **kwargs
     ):
         super().__init__(
@@ -567,7 +567,7 @@ class Saint(ModelBase):
         self.n_heads = n_heads
         self.max_seq_len = max_seq_len
         self.n_conti_features = n_conti_features
-        self.Tfixup = Tfixup
+        self.T_fixup = T_fixup
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
         # encoder combination projection
@@ -599,7 +599,7 @@ class Saint(ModelBase):
 
 
         # T-Fixup
-        if self.Tfixup:
+        if self.T_fixup:
             # 초기화 (Initialization)
             self.tfixup_initialization()
             print("T-Fixup Initialization Done")
