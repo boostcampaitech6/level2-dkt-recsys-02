@@ -44,6 +44,18 @@ def parse_args():
     parser.add_argument("--n_heads", default=2, type=int, help="number of heads")
     parser.add_argument("--drop_out", default=0.2, type=float, help="drop out rate")
 
+
+    def str2bool(v):
+        if isinstance(v, bool):
+            return v
+        if v == 'True':
+            return True
+        elif v == 'False':
+            return False
+        else:
+            raise argparse.ArgumentTypeError('Boolean value expected.')    
+    parser.add_argument("--T_fixup", default=False, type=str2bool, help="T-fixup setting(True/False)")
+
     # 훈련
     parser.add_argument("--n_epochs", default=20, type=int, help="number of epochs")
     parser.add_argument("--batch_size", default=64, type=int, help="batch size")

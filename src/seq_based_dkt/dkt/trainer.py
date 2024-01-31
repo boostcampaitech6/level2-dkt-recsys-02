@@ -4,7 +4,7 @@ import os
 import numpy as np
 import torch
 from torch import nn
-from torch.nn.functional import sigmoid
+from torch import sigmoid
 import wandb
 
 from .criterion import get_criterion
@@ -207,6 +207,7 @@ def get_model(args) -> nn.Module:
         n_heads=args.n_heads,
         drop_out=args.drop_out,
         max_seq_len=args.max_seq_len,
+        T_fixup=args.T_fixup
     )
     try:
         model_name = args.model.lower()
