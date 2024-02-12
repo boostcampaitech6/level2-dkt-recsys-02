@@ -15,13 +15,13 @@ def parse_args():
     parser.add_argument("--n_layers", default=3, type=int, help="")
     parser.add_argument("--alpha", default=None, type=float, help="")
     
-    parser.add_argument("--n_epochs", default=70, type=int, help="")
-    parser.add_argument("--lr", default=0.1, type=float, help="")
+    parser.add_argument("--n_epochs", default=5000, type=int, help="")
+    parser.add_argument("--lr", default=0.01, type=float, help="")
     parser.add_argument("--model_dir", default="./models/", type=str, help="")
     parser.add_argument("--model_name", default="best_model.pt", type=str, help="")
     parser.add_argument("--model",default="lightgcn",type=str,help="")
     parser.add_argument("--patience",default="1000",type=int,help="")
-    parser.add_argument("--agreegation_method",default="1",type=int,help="") # sum, attn
+    parser.add_argument("--agreegation_method",default="0",type=int,help="") # sum, attn
     args = parser.parse_args()
 
     return args

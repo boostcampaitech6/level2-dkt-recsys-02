@@ -79,7 +79,7 @@ def run(
             early_stopping_counter += 1
             if early_stopping_counter >= patience:
                 break
-        scheduler.step()
+        #scheduler.step()
     torch.save(obj={"model": model.state_dict(), "epoch": e + 1},
                f=os.path.join(model_dir, f"last_model.pt"))
     logger.info(f"Best Weight Confirmed : {best_epoch+1}'th epoch")
