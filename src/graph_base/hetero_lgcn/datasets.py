@@ -13,7 +13,7 @@ logger = get_logger(logging_conf)
 def prepare_dataset(device: str, data_dir: str, return_origin_train:bool = False) -> Tuple[dict, dict, int]:
     data = load_data(data_dir=data_dir)
     train_data, test_data = separate_data(data=data)
-    id2index: dict = indexing_data(data=data)
+    id2index, type_length = indexing_data(data=data)
     origin_train_data = process_data(train_data, id2index=id2index, device=device)
     train_data, val_data = train_to_tval_split(train_data,rule="last_percent")
     train_data_proc = process_data(data=train_data, id2index=id2index, device=device)
@@ -23,9 +23,9 @@ def prepare_dataset(device: str, data_dir: str, return_origin_train:bool = False
     print_data_stat(val_data,"val")
     print_data_stat(test_data, "Test")
     if return_origin_train:
-        return origin_train_data, val_data_proc ,test_data_proc, len(id2index) 
+        return origin_train_data, val_data_proc ,test_data_proc, len(id2index), type_length 
     else:
-        return train_data_proc, val_data_proc ,test_data_proc, len(id2index)
+        return train_data_proc, val_data_proc ,test_data_proc, len(id2index), type_length
 
 
 def load_data(data_dir: str) -> pd.DataFrame: 
@@ -50,22 +50,22 @@ def indexing_data(data: pd.DataFrame) -> dict:
         sorted(list(set(data.userID))),
         sorted(list(set(data.assessmentItemID))),
         sorted(list(set(data.testId))),
-        sorted(list(set(data.KnowleageTag)))
+        sorted(list(set(data.KnowledgeTag)))
     )
     n_user, n_item , n_test, n_tag = len(userid), len(itemid), len(testid), len(tag)
-
+    length = {"user" : n_user, "item": n_item, "test": n_test, "tag": n_tag}
     userid2index = {v: i for i, v in enumerate(userid)}
     itemid2index = {v: i + n_user for i, v in enumerate(itemid)}
-    testid2index = {v:i+n_user+n_item for i ,v in enumerate(testid)}
-    tagid2index = {v:i+n_user+n_item+n_test for i ,v in enumerate(tag)}
-    id2index = dict(userid2index, **itemid2index, **testid2index, **tagid2index)
-    return id2index
+    testid2index = {v:i+n_user for i ,v in enumerate(testid)}
+    tagid2index = {"T"+str(v):i+n_user for i ,v in enumerate(tag)}
+    id2index = {"user" : userid2index, "test" : testid2index, "tag" : tagid2index, "item":itemid2index}
+    return id2index, length
 
 
 def process_data(data: pd.DataFrame, id2index: dict, device: str) -> dict:
     edge_user_item, edge_user_test, edge_user_know ,label = [], [], [], []
-    for user, item, acode, test, know in zip(data.userID, data.assessmentItemID, data.answerCode, data.testId, data.KnowleageTag):
-        uid, iid, tid, kid = id2index[user], id2index[item], id2index[test], id2index[know]
+    for user, item, acode, test, know in zip(data.userID, data.assessmentItemID, data.answerCode, data.testId, data.KnowledgeTag):
+        uid, iid, tid, kid = id2index["user"][user], id2index["item"][item], id2index["test"][test], id2index["tag"]["T"+str(know)]
         edge_user_item.append([uid,iid])
         edge_user_test.append([uid,tid])
         edge_user_know.append([uid,kid])

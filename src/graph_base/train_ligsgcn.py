@@ -4,10 +4,10 @@ import argparse
 import torch
 import wandb
 
-from Sgcn.args import parse_args
-from Sgcn.datasets import prepare_dataset
-from Sgcn import trainer
-from Sgcn.utils import get_logger, set_seeds, logging_conf, get_expname
+from lightgcn_sgcn.args import parse_args
+from lightgcn_sgcn.datasets import prepare_dataset
+from lightgcn_sgcn import trainer
+from lightgcn_sgcn.utils import get_logger, set_seeds, logging_conf, get_expname
 
 
 logger = get_logger(logging_conf)
